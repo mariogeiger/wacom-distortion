@@ -6,6 +6,7 @@
 #include <QMouseEvent>
 #include <QPaintEvent>
 #include <QCloseEvent>
+#include <QKeyEvent>
 #include <QPoint>
 #include <QPointF>
 
@@ -22,16 +23,18 @@ private:
 	virtual void mousePressEvent(QMouseEvent* event);
 	virtual void paintEvent(QPaintEvent* event);
 	virtual void closeEvent(QCloseEvent* event);
+	virtual void keyPressEvent(QKeyEvent* event);
+
+	QVector<double> find_polynomial(double d, QVector<double> raw, QVector<double> phy);
+	void calibrate();
 
 	int _sw, _sh;
 	int _border_topX;
 	int _border_topY;
 	int _border_bottomX;
 	int _border_bottomY;
-	QVector<QPointF> _phy_hi_points;
-	QVector<QPointF> _raw_hi_points;
-	QVector<QPoint> _phy_points;
-	QVector<QPoint> _raw_points;
+	QVector<QPointF> _phy_points;
+	QVector<QPointF> _raw_points;
 };
 
 #endif // WIDGET_HH

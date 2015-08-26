@@ -13,6 +13,8 @@ TEMPLATE = app
 
 
 SOURCES += main.cc\
-        widget.cc
+        widget.cc \
+    lmath.c
 
-HEADERS  += widget.hh
+HEADERS  += widget.hh \
+    lmath.h
