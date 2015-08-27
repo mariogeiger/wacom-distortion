@@ -7,8 +7,10 @@
 #include <QPaintEvent>
 #include <QCloseEvent>
 #include <QKeyEvent>
+#include <QMoveEvent>
 #include <QPoint>
 #include <QPointF>
+#include <QTimer>
 
 class Widget : public QWidget
 {
@@ -24,6 +26,7 @@ private:
 	virtual void paintEvent(QPaintEvent* event);
 	virtual void closeEvent(QCloseEvent* event);
 	virtual void keyPressEvent(QKeyEvent* event);
+	virtual void moveEvent(QMoveEvent* event);
 
 	QVector<double> find_polynomial(double d, QVector<double> raw, QVector<double> phy);
 	void calibrate();
@@ -35,6 +38,9 @@ private:
 	int _border_bottomY;
 	QVector<QPointF> _phy_points;
 	QVector<QPointF> _raw_points;
+	QTimer _timer_pressure;
+
+	bool _mouse_fake;
 };
 
 #endif // WIDGET_HH
