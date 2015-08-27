@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 
 	if (!area.isEmpty()) {
 		w.setText("Please add contol points to calibrate the Center of the screen.\n"
-				  "Dont add control point to close to the borders. The central calibration must be linear.\n"
+				  "Dont add control point too close to the borders. The central calibration must be linear.\n"
 				  "Please press [enter] when you are finished");
 		w.setCreateBorders(false);
 
@@ -86,8 +86,9 @@ int main(int argc, char *argv[])
 			new_area[1] = area[1] - round(res[1] * (area[3]-area[1]) / (double)(res[0] * w.getScreenHeight()));
 			new_area[3] = round((area[3] - area[1]) / res[0] + area[1] - (res[1] * (area[3] - area[1])) / (res[0] * w.getScreenHeight()));
 
-			QString command = "xinput set-int-prop ";
+			QString command = "xinput set-prop ";
 			command += "\""+device+"\"";
+			command += " --type=int ";
 			command += " \"Wacom Tablet Area\"";
 			for (int i = 0; i < 4; ++i) command += QString(" %1").arg(new_area[i]);
 
@@ -104,7 +105,7 @@ int main(int argc, char *argv[])
 
 	w.setText("Please click with the mouse to set the widths of the border distortion.\n"
 			  "Then add as much as you want control points in the borders\n"
-			  "The key F swich the window in fullscreen\n"
+			  "The key F swiches the window in fullscreen\n"
 			  "You can remove the lase point with backspace.\n"
 			  "The key Delete reset all the points and borders.\n"
 			  "Please press Enter when you are finished.");
