@@ -141,6 +141,8 @@ QVector<int> readTabletArea(const QString& device)
 	p.start();
 	p.waitForFinished();
 
+	qDebug("xinput return %d", p.exitCode());
+
 	// parse output
 	QVector<int> values;
 	QByteArray output = p.readAllStandardOutput();
