@@ -144,20 +144,21 @@ QVector<int> readTabletArea(const QString& device)
 	qDebug("xinput return %d", p.exitCode());
 
 	// parse output
-	QVector<int> values;
 	QByteArray output = p.readAllStandardOutput();
 	int pos = output.indexOf("Wacom Tablet Area");
-	if (pos == -1) return values;
+	if (pos == -1) return QVector<int>();
 	pos = output.indexOf(':', pos);
 	pos++; // ignore the ':'
 	int end = output.indexOf('\n', pos);
 	output = output.mid(pos, end-pos);
 	QString svalues(output);
-	QStringList list = svalues.split(QRegExp("\\s+"));
+	QStringList list = svalues.split(",", QString::SkipEmptyParts);
 	if (list.size() != 4) return QVector<int>();
+
+	QVector<int> values;
 	for (int i = 0; i < list.size(); ++i) {
 		bool ok;
-		values << list[i].toInt(&ok);
+		values << list[i].trimmed().toInt(&ok);
 		if (!ok) return QVector<int>();
 	}
 	return values;
