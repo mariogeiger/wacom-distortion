@@ -95,8 +95,7 @@ int main(int argc, char *argv[])
 			r = QProcess::execute(command);
 			cout << "returned " << r << endl;
 		} else {
-			cout << "Aborted" << endl;
-			return 1;
+			cout << "Central calibration skipped" << endl;
 		}
 
 		w.clearAll();
@@ -105,8 +104,8 @@ int main(int argc, char *argv[])
 	w.setText("Please click with the mouse to set the widths of the border distortion.\n"
 			  "Then add as much as you want control points in the borders\n"
 			  "The key F swiches the window in fullscreen\n"
-			  "You can remove the lase point with backspace.\n"
-			  "The key Delete reset all the points and borders.\n"
+			  "You can remove the last point with backspace.\n"
+			  "The key Delete resets all the points and borders.\n"
 			  "Please press Enter when you are finished.");
 	w.setCreateBorders(true);
 
