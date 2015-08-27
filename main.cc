@@ -42,8 +42,8 @@ int main(int argc, char *argv[])
 
 	if (!area.isEmpty()) {
 		w.setText("Please add contol points to calibrate the Center of the screen.\n"
-				  "Dont add control point too close to the borders. The central calibration must be linear.\n"
-				  "Please press [enter] when you are finished");
+				  "Don't add control points too close to the borders. The central calibration must be linear.\n"
+				  "Please press [enter] when you are finished.");
 		w.setCreateBorders(false);
 
 		if (w.exec() == QDialog::Accepted) {
@@ -102,8 +102,8 @@ int main(int argc, char *argv[])
 	}
 
 	w.setText("Please click with the mouse to set the widths of the border distortion.\n"
-			  "Then add as much as you want control points in the borders\n"
-			  "The key F swiches the window in fullscreen\n"
+			  "Then add as much control points as you want in the borders.\n"
+			  "The F key switches the window in fullscreen mode.\n"
 			  "You can remove the last point with backspace.\n"
 			  "The key Delete resets all the points and borders.\n"
 			  "Please press Enter when you are finished.");
