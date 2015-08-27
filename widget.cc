@@ -8,6 +8,7 @@ extern "C"
 #include <QScreen>
 #include <QGuiApplication>
 #include <QMessageBox>
+#include <iostream>
 
 Widget::Widget(QWidget *parent)
 	: QWidget(parent)
@@ -137,6 +138,11 @@ QVector<double> Widget::find_polynomial(double d, QVector<double> raw, QVector<d
 
 void Widget::calibrate()
 {
+	QVector<double> values;
+	for (int i = 0; i < 4; ++i) {
+		values << 0.0 << 0.0 << 0.0 << 1.0 << 0.0;
+	}
+
 	if (_border_topX > 0) {
 		QVector<double> raw, phy;
 		for (int i = 0; i < _raw_points.size(); ++i) {
@@ -149,9 +155,8 @@ void Widget::calibrate()
 		QVector<double> poly = find_polynomial(d, raw, phy);
 
 		if (poly.size() == 4) {
-			qDebug("xinput set-float-prop <device> \"Wacom Border Distortion Top X\" %g %g %g %g %g", d, poly[0], poly[1], poly[2], poly[3]);
-		} else {
-			qDebug("cannot solve the linear system for Top X");
+			values[0] = d;
+			for (int i = 0; i < 4; ++i) values[1+i] = poly[i];
 		}
 	}
 
@@ -167,9 +172,8 @@ void Widget::calibrate()
 		QVector<double> poly = find_polynomial(d, raw, phy);
 
 		if (poly.size() == 4) {
-			qDebug("xinput set-float-prop <device> \"Wacom Border Distortion Top Y\" %g %g %g %g %g", d, poly[0], poly[1], poly[2], poly[3]);
-		} else {
-			qDebug("cannot solve the linear system for Top Y");
+			values[5] = d;
+			for (int i = 0; i < 4; ++i) values[6+i] = poly[i];
 		}
 	}
 
@@ -185,9 +189,8 @@ void Widget::calibrate()
 		QVector<double> poly = find_polynomial(d, raw, phy);
 
 		if (poly.size() == 4) {
-			qDebug("xinput set-float-prop <device> \"Wacom Border Distortion Bottom X\" %g %g %g %g %g", d, poly[0], poly[1], poly[2], poly[3]);
-		} else {
-			qDebug("cannot solve the linear system for Bottom X");
+			values[10] = d;
+			for (int i = 0; i < 4; ++i) values[11+i] = poly[i];
 		}
 	}
 
@@ -203,9 +206,12 @@ void Widget::calibrate()
 		QVector<double> poly = find_polynomial(d, raw, phy);
 
 		if (poly.size() == 4) {
-			qDebug("xinput set-float-prop <device> \"Wacom Border Distortion Bottom Y\" %g %g %g %g %g", d, poly[0], poly[1], poly[2], poly[3]);
-		} else {
-			qDebug("cannot solve the linear system for Bottom Y");
+			values[15] = d;
+			for (int i = 0; i < 4; ++i) values[16+i] = poly[i];
 		}
 	}
+
+	std::cout << "xinput set-float-prop <device> \"Wacom Border Distortion\"";
+	for (int i = 0; i < values.size(); ++i) std::cout << " " << values[i];
+	std::cout << std::endl;
 }
