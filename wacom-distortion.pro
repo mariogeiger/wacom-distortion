@@ -13,8 +13,9 @@ TEMPLATE = app
 
 
 SOURCES += main.cc\
-        widget.cc \
-    lmath.c
+    lmath.c \
+    calibrationdialog.cc
 
-HEADERS  += widget.hh \
-    lmath.h
+HEADERS  += \
+    lmath.h \
+    calibrationdialog.hh
