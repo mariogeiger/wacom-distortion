@@ -86,10 +86,9 @@ int main(int argc, char *argv[])
 			new_area[1] = area[1] - round(res[1] * (area[3]-area[1]) / (double)(res[0] * w.getScreenHeight()));
 			new_area[3] = round((area[3] - area[1]) / res[0] + area[1] - (res[1] * (area[3] - area[1])) / (res[0] * w.getScreenHeight()));
 
-			QString command = "xinput set-prop ";
+			QString command = "xinput set-int-prop ";
 			command += "\""+device+"\"";
-			command += " --type=int ";
-			command += " \"Wacom Tablet Area\"";
+			command += " \"Wacom Tablet Area\" 32 ";
 			for (int i = 0; i < 4; ++i) command += QString(" %1").arg(new_area[i]);
 
 			cout << "execute : " << command << endl;
