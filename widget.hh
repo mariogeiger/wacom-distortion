@@ -28,6 +28,8 @@ private:
 	virtual void keyPressEvent(QKeyEvent* event);
 	virtual void moveEvent(QMoveEvent* event);
 
+	void click_border(int x, int y);
+
 	QVector<double> find_polynomial(double d, QVector<double> raw, QVector<double> phy);
 	void calibrate();
 
@@ -39,8 +41,6 @@ private:
 	QVector<QPointF> _phy_points;
 	QVector<QPointF> _raw_points;
 	QTimer _timer_pressure;
-
-	bool _mouse_fake;
 };
 
 #endif // WIDGET_HH

@@ -16,7 +16,7 @@ Widget::Widget(QWidget *parent)
 	QList<QScreen*> screens = QGuiApplication::screens();
 	_sw = screens.first()->size().width();
 	_sh = screens.first()->size().height();
-	qDebug("screen dimention %dx%d", _sw, _sh);
+	qDebug("Screen dimension %dx%d", _sw, _sh);
 
 	_border_topX = -1;
 	_border_topY = -1;
@@ -24,7 +24,6 @@ Widget::Widget(QWidget *parent)
 	_border_bottomY = -1;
 
 	_timer_pressure.setSingleShot(true);
-	_mouse_fake = true;
 	setCursor(QCursor(Qt::CrossCursor));
 }
 
@@ -33,33 +32,40 @@ Widget::~Widget()
 
 }
 
+/* Quand on survole avec le stylet il n'y a pas d'event déclanché
+ *
+ * Quand on presse ca déclanche un tabletEvent puis un mousePressEvent puis plein de tabletEvent
+ *
+ */
 void Widget::tabletEvent(QTabletEvent* event)
 {
-	_mouse_fake = false;
+	switch (event->type()) {
+	case QEvent::TabletEnterProximity:
+		qDebug("stylus : type = TabletEnterProximity");
+		break;
+	case QEvent::TabletLeaveProximity:
+		qDebug("stylus : type = TabletLeaveProximity");
+		break;
+	case QEvent::TabletMove:
+		qDebug("stylus : type = TabletMove");
+		break;
+	case QEvent::TabletPress:
+		qDebug("stylus : type = TabletPress");
+		break;
+	case QEvent::TabletRelease:
+		qDebug("stylus : type = TabletRelease");
+		break;
+	default:
+		qDebug("stylus : type = Other");
+		break;
+	}
 
 	if (event->pressure() == 0.0) return;
 
 	if (!_timer_pressure.isActive()) {
 		if (event->pointerType() == QTabletEvent::Eraser) {
-			int x = event->globalX();
-			int y = event->globalY();
-			int cx = _sw - x;
-			int cy = _sh - y;
-			int smallest = qMin(qMin(x, y), qMin(cx, cy));
-
-			if (x == smallest) {
-				_border_topX = x;
-			}
-			if (y == smallest) {
-				_border_topY = y;
-			}
-			if (cx == smallest) {
-				_border_bottomX = x;
-			}
-			if (cy == smallest) {
-				_border_bottomY = y;
-			}
-			qDebug("border changed");
+			click_border(event->globalX(), event->globalY());
+			qDebug("stylus : Border changed");
 		} else {
 			if (_raw_points.size() == _phy_points.size()) {
 				_phy_points << event->globalPosF();
@@ -68,42 +74,32 @@ void Widget::tabletEvent(QTabletEvent* event)
 				_raw_points << event->globalPosF();
 				setCursor(QCursor(Qt::CrossCursor));
 			}
-			qDebug("%d in raw, %d in phy", _raw_points.size(), _phy_points.size());
+			qDebug("stylus : Point added, %d in raw, %d in phy", _raw_points.size(), _phy_points.size());
 		}
 		repaint();
+	} else {
+		qDebug("stylus : Ignored");
 	}
 	_timer_pressure.start(200);
 }
 
 void Widget::mousePressEvent(QMouseEvent* event)
 {
-	if (!_mouse_fake) return;
+	if (_timer_pressure.isActive()) {
+		qDebug("mouse : Ignored");
+		return;
+	}
 
 	if (event->button() == Qt::LeftButton) {
-		int x = event->globalX();
-		int y = event->globalY();
-		int cx = _sw - x;
-		int cy = _sh - y;
-		int smallest = qMin(qMin(x, y), qMin(cx, cy));
-
-		if (x == smallest) {
-			_border_topX = x;
-		}
-		if (y == smallest) {
-			_border_topY = y;
-		}
-		if (cx == smallest) {
-			_border_bottomX = x;
-		}
-		if (cy == smallest) {
-			_border_bottomY = y;
-		}
+		click_border(event->globalX(), event->globalY());
+		qDebug("mouse : Border changed");
 	} else {
 		if (_raw_points.size() == _phy_points.size()) {
 			_phy_points << event->globalPos();
 		} else if (_raw_points.size() < _phy_points.size()) {
 			_raw_points << event->globalPos();
 		}
+		qDebug("mouse : Point added, %d in raw, %d in phy", _raw_points.size(), _phy_points.size());
 	}
 	repaint();
 }
@@ -112,6 +108,15 @@ void Widget::paintEvent(QPaintEvent*)
 {
 	QPainter painter(this);
 	painter.setRenderHint(QPainter::Antialiasing, true);
+
+	painter.drawText(rect(), Qt::AlignCenter,
+					 "Click to set a border\n"
+					 "Tap in any border to add a calibation point then tap in the target\n"
+					 "you can move the window, the points will follow\n"
+					 "F - fullscreen\n"
+					 "backspace - remove last point\n"
+					 "Delete - reset all\n"
+					 "Esc - quit (the calibration setting are shown at exit)");
 
 	painter.translate(mapFromGlobal(QPoint(0,0)));
 
@@ -158,6 +163,10 @@ void Widget::keyPressEvent(QKeyEvent* event)
 	if (event->key() == Qt::Key_Delete) {
 		_phy_points.clear();
 		_raw_points.clear();
+		_border_topX = -1;
+		_border_topY = -1;
+		_border_bottomX = -1;
+		_border_bottomY = -1;
 		repaint();
 	}
 	if (event->key() == Qt::Key_Backspace) {
@@ -180,6 +189,26 @@ void Widget::keyPressEvent(QKeyEvent* event)
 void Widget::moveEvent(QMoveEvent* )
 {
 	repaint();
+}
+
+void Widget::click_border(int x, int y)
+{
+	int cx = _sw - x;
+	int cy = _sh - y;
+	int smallest = qMin(qMin(x, y), qMin(cx, cy));
+
+	if (x == smallest) {
+		_border_topX = x;
+	}
+	if (y == smallest) {
+		_border_topY = y;
+	}
+	if (cx == smallest) {
+		_border_bottomX = x;
+	}
+	if (cy == smallest) {
+		_border_bottomY = y;
+	}
 }
 
 QVector<double> Widget::find_polynomial(double d, QVector<double> raw, QVector<double> phy)
