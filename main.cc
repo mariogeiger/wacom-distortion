@@ -10,6 +10,9 @@ extern "C" {
 #include <cmath>
 #include <QTextStream>
 
+QTextStream cout(stdout);
+
+int linearCalibration(const QString& device, CalibrationDialog* w, const QVector<int>& area);
 QVector<double> calibrate(CalibrationDialog* w);
 QVector<int> readTabletArea(const QString& device);
 
@@ -26,6 +29,8 @@ int main(int argc, char *argv[])
 									   "Tolerance in pixel to consider a point as perfect",
 									   "tolerance", "2");
 	parser.addOption(toleranceOption);
+	QCommandLineOption skipLinearCalibration("skip-linear", "Skip the linear part of the calibration");
+	parser.addOption(skipLinearCalibration);
 
 	parser.process(app);
 	QString device = parser.positionalArguments().value(0, "");
@@ -33,10 +38,9 @@ int main(int argc, char *argv[])
 	double tolerance = parser.value(toleranceOption).toDouble(&ok);
 	if (!ok || tolerance < 0.0) tolerance = 2.0;
 
-	QTextStream cout(stdout);
 
 	if (device.isEmpty()) {
-		cout << "No device given in argument, run directly to distortion calibration" << endl;
+		cout << "No device given in argument" << endl;
 	}
 
 	QVector<int> area;
@@ -44,77 +48,31 @@ int main(int argc, char *argv[])
 		QString command = QString(
 					"xinput set-float-prop \"%1\" \"Wacom Border Distortion\" "
 					"0 0 0 1 0   0 0 0 1 0   0 0 0 1 0   0 0 0 1 0").arg(device);
-		cout << "execute : " << command << endl;
+		cout << command << endl;
 		int r = QProcess::execute(command);
-		cout << "returned " << r << endl;
-
+		if (r != 0) {
+			cout << "Error, cannot set the distortion parameters to identity. It will quit." << endl;
+			return 1;
+		}
 
 		area = readTabletArea(device);
 		if (area.isEmpty())	{
-			cout << "Cannot read Wacom Tablet Area" << endl;
+			cout << "Error, cannot read Wacom Tablet Area parameter. It will quit." << endl;
+			return 1;
 		}
+	} else {
+		cout << "Considere Wacom Tablet Area to be 0 0 10000 10000" << endl;
+		area << 0 << 0 << 10000 << 10000;
 	}
 
 	CalibrationDialog w;
 
-	if (!area.isEmpty()) {
-		w.setText("Please add contol points to calibrate the Center of the screen.\n"
-				  "Don't add control points too close to the borders. The central calibration must be linear.\n"
-				  "Please press [enter] when you are finished.");
-		w.setCreateBorders(false);
-
-		if (w.exec() == QDialog::Accepted) {
-			QVector<double> rawX, rawY, phyX, phyY;
-			const QVector<QPointF>& raw = w.getRawPoints();
-			const QVector<QPointF>& phy = w.getPhysicalPoints();
-			for (int i = 0; i < raw.size(); ++i) {
-				rawX << raw[i].x();
-				rawY << raw[i].y();
-				phyX << phy[i].x();
-				phyY << phy[i].y();
-			}
-			int new_area[4];
-			QVector<double> a, arhs;
-			for (int i = 0; i < raw.size(); ++i) {
-				a << rawX[i] << 1.0;
-				arhs << phyX[i];
-			}
-			double res[2];
-			int r = least_squares(arhs.size(), 2, a.data(), arhs.data(), res);
-			if (r != 0) {
-				cout << "Cant apply least squares method. Not enough points ?" << endl;
-				return 1;
-			}
-			// phy = res[0] * raw + res[1]
-			new_area[0] = area[0] - round(res[1] * (area[2]-area[0]) / (double)(res[0] * w.getScreenWidth()));
-			new_area[2] = round((area[2] - area[0]) / res[0] + area[0] - (res[1] * (area[2] - area[0])) / (res[0] * w.getScreenWidth()));
-
-			a.clear(); arhs.clear();
-			for (int i = 0; i < raw.size(); ++i) {
-				a << rawY[i] << 1.0;
-				arhs << phyY[i];
-			}
-			r = least_squares(arhs.size(), 2, a.data(), arhs.data(), res);
-			if (r != 0) {
-				cout << "Cant apply least squares method. Not enough points ?" << endl;
-				return 1;
-			}
-			// phy = res[0] * raw + res[1]
-			new_area[1] = area[1] - round(res[1] * (area[3]-area[1]) / (double)(res[0] * w.getScreenHeight()));
-			new_area[3] = round((area[3] - area[1]) / res[0] + area[1] - (res[1] * (area[3] - area[1])) / (res[0] * w.getScreenHeight()));
-
-			QString command = "xinput set-int-prop ";
-			command += "\""+device+"\"";
-			command += " \"Wacom Tablet Area\" 32 ";
-			for (int i = 0; i < 4; ++i) command += QString(" %1").arg(new_area[i]);
-
-			cout << "execute : " << command << endl;
-			r = QProcess::execute(command);
-			cout << "returned " << r << endl;
-		} else {
-			cout << "Central calibration skipped" << endl;
+	if (!parser.isSet(skipLinearCalibration)) {
+		int r = linearCalibration(device, &w, area);
+		if (r != 0) {
+			cout << "Quit..." << endl;
+			return 1;
 		}
-
 		w.clearAll();
 	}
 
@@ -128,8 +86,6 @@ int main(int argc, char *argv[])
 	w.setTolerance(tolerance);
 
 	if (w.exec() == QDialog::Accepted) {
-		qDebug("dialog accepted");
-
 		QVector<double> values = calibrate(&w);
 
 		QString command = "xinput set-float-prop ";
@@ -138,14 +94,88 @@ int main(int argc, char *argv[])
 		for (int i = 0; i < values.size(); ++i) command += QString(" %1").arg(values[i]);
 
 		if (device.isEmpty()) {
-			cout << "You have to execute " << command << endl;
+			cout << "You have to execute :\n" << command << endl;
 		} else {
-			cout << "execute : " << command << endl;
+			cout << command << endl;
 			int r = QProcess::execute(command);
-			cout << "returned " << r << endl;
+			if (r != 0) {
+				cout << "Error, cannot set Wacom Border Distortion parameters. Quit..." << endl;
+				return 1;
+			}
 		}
+	} else {
+		cout << "Distortion calibration skipped" << endl;
 	}
 
+	cout << "Finish successfully" << endl;
+	return 0;
+}
+
+int linearCalibration(const QString& device, CalibrationDialog* w, const QVector<int>& area)
+{
+	w->setText("Please add contol points to calibrate the Center of the screen.\n"
+			  "Don't add control points too close to the borders. The central calibration must be linear.\n"
+			  "Please press [enter] when you are finished.");
+	w->setCreateBorders(false);
+
+	if (w->exec() == QDialog::Accepted) {
+		QVector<double> rawX, rawY, phyX, phyY;
+		const QVector<QPointF>& raw = w->getRawPoints();
+		const QVector<QPointF>& phy = w->getPhysicalPoints();
+		for (int i = 0; i < raw.size(); ++i) {
+			rawX << raw[i].x();
+			rawY << raw[i].y();
+			phyX << phy[i].x();
+			phyY << phy[i].y();
+		}
+		int new_area[4];
+		QVector<double> a, arhs;
+		for (int i = 0; i < raw.size(); ++i) {
+			a << rawX[i] << 1.0;
+			arhs << phyX[i];
+		}
+		double res[2];
+		int r = least_squares(arhs.size(), 2, a.data(), arhs.data(), res);
+		if (r != 0) {
+			cout << "Cant apply least squares method. Not enough points ?" << endl;
+			return 1;
+		}
+		// phy = res[0] * raw + res[1]
+		new_area[0] = area[0] - round(res[1] * (area[2]-area[0]) / (double)(res[0] * w->getScreenWidth()));
+		new_area[2] = round((area[2] - area[0]) / res[0] + area[0] - (res[1] * (area[2] - area[0])) / (res[0] * w->getScreenWidth()));
+
+		a.clear(); arhs.clear();
+		for (int i = 0; i < raw.size(); ++i) {
+			a << rawY[i] << 1.0;
+			arhs << phyY[i];
+		}
+		r = least_squares(arhs.size(), 2, a.data(), arhs.data(), res);
+		if (r != 0) {
+			cout << "Cant apply least squares method. Not enough points ?" << endl;
+			return 1;
+		}
+		// phy = res[0] * raw + res[1]
+		new_area[1] = area[1] - round(res[1] * (area[3]-area[1]) / (double)(res[0] * w->getScreenHeight()));
+		new_area[3] = round((area[3] - area[1]) / res[0] + area[1] - (res[1] * (area[3] - area[1])) / (res[0] * w->getScreenHeight()));
+
+		QString command = "xinput set-int-prop \"";
+		command += device.isEmpty() ? "<device>" : device;
+		command += "\" \"Wacom Tablet Area\" 32 ";
+		for (int i = 0; i < 4; ++i) command += QString(" %1").arg(new_area[i]);
+
+		if (device.isEmpty()) {
+			cout << "You have to execute :\n" << command << endl;
+		} else {
+			cout << command << endl;
+			r = QProcess::execute(command);
+			if (r != 0) {
+				cout << "Error, cannot set the Wacom Tablet Area parameters" << endl;
+				return 1;
+			}
+		}
+	} else {
+		cout << "Linear calibration skipped" << endl;
+	}
 	return 0;
 }
 
