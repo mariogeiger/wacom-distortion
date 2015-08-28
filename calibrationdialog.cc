@@ -75,6 +75,7 @@ void CalibrationDialog::mousePressEvent(QMouseEvent* event)
 	}
 
 	if (grab) {
+		setCursor(QCursor(Qt::ClosedHandCursor));
 		update();
 		return;
 	}
@@ -89,6 +90,9 @@ void CalibrationDialog::mousePressEvent(QMouseEvent* event)
 
 void CalibrationDialog::mouseMoveEvent(QMouseEvent* event)
 {
+	if (!m_show_borders) return;
+	if (m_phy_points.size() != m_raw_points.size()) return;
+
 	bool grab = false;
 	for (Border& elem : m_borders) {
 		if (elem.state == 2) {
@@ -101,13 +105,19 @@ void CalibrationDialog::mouseMoveEvent(QMouseEvent* event)
 		return;
 	}
 
+	bool ungrab = false;
 	for (Border& elem : m_borders) {
 		if (std::abs((elem.horizontal ? event->globalY() : event->globalX()) - elem.pos) <= 5) {
 			elem.state = 1;
+			grab = true;
 		} else if (elem.state == 1) {
 			elem.state = 0;
+			ungrab = true;
 		}
 	}
+	if (grab) setCursor(QCursor(Qt::OpenHandCursor));
+	if (ungrab) setCursor(QCursor(Qt::CrossCursor));
+
 	update();
 }
 
@@ -116,6 +126,7 @@ void CalibrationDialog::mouseReleaseEvent(QMouseEvent* )
 	for (Border& elem : m_borders) {
 		if (elem.state == 2) {
 			elem.state = 1;
+			setCursor(QCursor(Qt::CrossCursor));
 		}
 	}
 	update();
@@ -126,6 +137,7 @@ void CalibrationDialog::paintEvent(QPaintEvent*)
 	QPainter painter(this);
 	painter.setRenderHint(QPainter::Antialiasing, true);
 
+	painter.setPen(Qt::darkGray);
 	painter.drawText(rect(), Qt::AlignCenter, m_text);
 
 	painter.translate(mapFromGlobal(QPoint(0,0)));
@@ -158,9 +170,18 @@ void CalibrationDialog::paintEvent(QPaintEvent*)
 	}
 }
 
-void CalibrationDialog::closeEvent(QCloseEvent* )
+void CalibrationDialog::closeEvent(QCloseEvent* event)
 {
-	// check number of points ??
+	int ans = QMessageBox::question(
+				  this, "Skip the calibration",
+				  "Do you want to skip this part of the calibration ?",
+				  QMessageBox::Yes, QMessageBox::Cancel);
+
+	if (ans == QMessageBox::Yes) {
+		QWidget::closeEvent(event);
+	} else {
+		event->ignore();
+	}
 }
 
 void CalibrationDialog::keyPressEvent(QKeyEvent* event)
@@ -192,16 +213,29 @@ void CalibrationDialog::keyPressEvent(QKeyEvent* event)
 		update();
 	}
 	if (event->key() == Qt::Key_Escape) {
-		reject();
+		int ans = QMessageBox::question(
+					  this, "Skip the calibration",
+					  "Do you want to skip this part of the calibration ?",
+					  QMessageBox::Yes, QMessageBox::Cancel);
+
+		if (ans == QMessageBox::Yes) {
+			reject();
+		}
 	}
 	if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
 		accept();
 	}
 }
 
-void CalibrationDialog::moveEvent(QMoveEvent* )
+void CalibrationDialog::moveEvent(QMoveEvent* event)
 {
+	QWidget::moveEvent(event);
 	update();
+}
+
+void CalibrationDialog::showEvent(QShowEvent* event)
+{
+	QWidget::showEvent(event);
 }
 
 void CalibrationDialog::add_point(const QPointF& point)

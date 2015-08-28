@@ -9,6 +9,7 @@
 #include <QCloseEvent>
 #include <QKeyEvent>
 #include <QMoveEvent>
+#include <QShowEvent>
 #include <QPoint>
 #include <QPointF>
 #include <QTimer>
@@ -46,6 +47,7 @@ private:
 	virtual void closeEvent(QCloseEvent* event);
 	virtual void keyPressEvent(QKeyEvent* event);
 	virtual void moveEvent(QMoveEvent* event);
+	virtual void showEvent(QShowEvent* event);
 
 	void add_point(const QPointF& point);
 
@@ -67,7 +69,6 @@ private:
 		void paint(QPainter* p, double w, double h);
 		void move(double new_pos);
 	} m_borders[4];
-
 };
 
 #endif // CALIBRATIONDIALOG_HH
