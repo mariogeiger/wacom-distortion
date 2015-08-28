@@ -20,3 +20,6 @@ SOURCES += main.cc\
 HEADERS  += \
     lmath.h \
     calibrationdialog.hh
+
+DISTFILES += \
+    README.md

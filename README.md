@@ -5,4 +5,4 @@ Calibration tool for wacom stylus
 ### Execute
     wacom-distortion <device>
 ### Depends
-    xinput, qt5
+	xinput, qt5, c++11
