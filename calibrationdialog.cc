@@ -17,12 +17,13 @@ CalibrationDialog::CalibrationDialog(QWidget *parent)
 	}
 
 	clearAll();
-	m_borders = true;
+	m_show_borders = true;
 	m_tolerance = 1.5;
 
 	setWindowFlags(Qt::Window);
 	setCursor(QCursor(Qt::CrossCursor));
 	setResult(QDialog::Rejected);
+	setMouseTracking(true);
 }
 
 CalibrationDialog::~CalibrationDialog()
@@ -32,10 +33,26 @@ CalibrationDialog::~CalibrationDialog()
 
 void CalibrationDialog::clearAll()
 {
-	m_border_topX = -1;
-	m_border_topY = -1;
-	m_border_bottomX = -1;
-	m_border_bottomY = -1;
+	m_borders[0].pos = 0.1 * m_w;
+	m_borders[0].limit = 0.4 * m_w;
+	m_borders[0].horizontal = false;
+	m_borders[0].state = 0;
+
+	m_borders[1].pos = 0.1 * m_h;
+	m_borders[1].limit = 0.4 * m_h;
+	m_borders[1].horizontal = true;
+	m_borders[1].state = 0;
+
+	m_borders[2].pos = 0.9 * m_w;
+	m_borders[2].limit = 0.6 * m_w;
+	m_borders[2].horizontal = false;
+	m_borders[2].state = 0;
+
+	m_borders[3].pos = 0.9 * m_h;
+	m_borders[3].limit = 0.6 * m_h;
+	m_borders[3].horizontal = true;
+	m_borders[3].state = 0;
+
 	m_phy_points.clear();
 	m_raw_points.clear();
 	setCursor(QCursor(Qt::CrossCursor));
@@ -44,23 +61,58 @@ void CalibrationDialog::clearAll()
 void CalibrationDialog::tabletEvent(QTabletEvent* event)
 {
 	if (event->type() == QEvent::TabletPress) {
-		if (m_raw_points.size() == m_phy_points.size()) {
-			m_phy_points << event->globalPosF();
-			setCursor(QCursor(Qt::BlankCursor));
-		} else if (m_raw_points.size() < m_phy_points.size()) {
-			m_raw_points << event->globalPosF();
-			setCursor(QCursor(Qt::CrossCursor));
-			check_borders();
-		}
-		qDebug("Point added, %d in raw, %d in phy", m_raw_points.size(), m_phy_points.size());
-
-		repaint();
+		m_tabletGlobalPosF = event->globalPosF();
 	}
 }
 
-void CalibrationDialog::mousePressEvent(QMouseEvent* )
+void CalibrationDialog::mousePressEvent(QMouseEvent* event)
 {
+	bool grab = false;
+	for (Border& elem : m_borders) {
+		if (elem.state == 1) {
+			elem.state = 2;
+			grab = true;
+		} else if (elem.state == 2) {
+			elem.state = 1;
+			grab = true;
+		}
+	}
 
+	if (grab) {
+		update();
+		return;
+	}
+
+	if (event->globalPos() == m_tabletGlobalPosF.toPoint()) {
+		add_point(m_tabletGlobalPosF);
+	} else {
+		add_point(event->globalPos());
+	}
+	update();
+}
+
+void CalibrationDialog::mouseMoveEvent(QMouseEvent* event)
+{
+	bool grab = false;
+	for (Border& elem : m_borders) {
+		if (elem.state == 2) {
+			elem.move(elem.horizontal ? event->globalY() : event->globalX());
+			grab = true;
+		}
+	}
+	if (grab) {
+		update();
+		return;
+	}
+
+	for (Border& elem : m_borders) {
+		if (std::abs((elem.horizontal ? event->globalY() : event->globalX()) - elem.pos) <= 5) {
+			elem.state = 1;
+		} else if (elem.state == 1) {
+			elem.state = 0;
+		}
+	}
+	update();
 }
 
 void CalibrationDialog::paintEvent(QPaintEvent*)
@@ -72,11 +124,9 @@ void CalibrationDialog::paintEvent(QPaintEvent*)
 
 	painter.translate(mapFromGlobal(QPoint(0,0)));
 
-	painter.setPen(QPen(Qt::black, 0.5));
-	painter.drawLine(m_border_topX, 0, m_border_topX, m_h);
-	painter.drawLine(0, m_border_topY, m_w, m_border_topY);
-	painter.drawLine(m_border_bottomX, 0, m_border_bottomX, m_h);
-	painter.drawLine(0, m_border_bottomY, m_w, m_border_bottomY);
+	if (m_show_borders) {
+		for (Border& elem : m_borders) elem.paint(&painter, m_w, m_h);
+	}
 
 	for (int i = 0; i < m_raw_points.size(); ++i) {
 		painter.setPen(Qt::black);
@@ -120,7 +170,7 @@ void CalibrationDialog::keyPressEvent(QKeyEvent* event)
 
 		if (ans == QMessageBox::Yes) {
 			clearAll();
-			repaint();
+			update();
 		}
 	}
 	if (event->key() == Qt::Key_Backspace) {
@@ -131,92 +181,54 @@ void CalibrationDialog::keyPressEvent(QKeyEvent* event)
 			} else {
 				m_phy_points.removeLast();
 				setCursor(QCursor(Qt::CrossCursor));
-				check_borders();
 			}
 		}
-		repaint();
+		update();
 	}
 	if (event->key() == Qt::Key_Escape) {
 		reject();
 	}
-	if (event->key() == Qt::Key_Return) {
+	if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
 		accept();
 	}
 }
 
 void CalibrationDialog::moveEvent(QMoveEvent* )
 {
-	repaint();
+	update();
 }
 
-void CalibrationDialog::check_borders()
+void CalibrationDialog::add_point(const QPointF& point)
 {
-	if (!m_borders) return;
-	if (m_raw_points.isEmpty()) return;
-	if (m_raw_points.size() != m_phy_points.size()) return;
-
-	QVector<QPair<QPointF,QPointF>> raw_phi_topX, raw_phi_topY, raw_phi_bottomX, raw_phi_bottomY;
-	for (int i = 0; i < m_raw_points.size(); ++i) {
-		double x = m_phy_points[i].x();
-		double y = m_phy_points[i].y();
-		double cx = m_w - x;
-		double cy = m_h - y;
-
-		if (x < y && x < cx && x < cy)   raw_phi_topX << QPair<QPointF,QPointF>(m_raw_points[i], m_phy_points[i]);
-		if (y < x && y < cx && y < cy)   raw_phi_topY << QPair<QPointF,QPointF>(m_raw_points[i], m_phy_points[i]);
-		if (cx < cy && cx < x && cx < y) raw_phi_bottomX << QPair<QPointF,QPointF>(m_raw_points[i], m_phy_points[i]);
-		if (cy < cx && cy < x && cy < y) raw_phi_bottomY << QPair<QPointF,QPointF>(m_raw_points[i], m_phy_points[i]);
+	if (m_raw_points.size() == m_phy_points.size()) {
+		m_phy_points << point;
+		setCursor(QCursor(Qt::BlankCursor));
+	} else if (m_raw_points.size() < m_phy_points.size()) {
+		m_raw_points << point;
+		setCursor(QCursor(Qt::CrossCursor));
 	}
+	qDebug("Point added, %d in raw, %d in phy", m_raw_points.size(), m_phy_points.size());
+}
 
-	std::sort(raw_phi_topX.begin(), raw_phi_topX.end(), [](const QPair<QPointF,QPointF>& a, const QPair<QPointF,QPointF>& b) -> bool {
-		return a.second.x() > b.second.x();
-	}); // du plus grand au plus petit
-	std::sort(raw_phi_topY.begin(), raw_phi_topY.end(), [](const QPair<QPointF,QPointF>& a, const QPair<QPointF,QPointF>& b) -> bool {
-		return a.second.y() > b.second.y();
-	}); // du plus grand au plus petit
-	std::sort(raw_phi_bottomX.begin(), raw_phi_bottomX.end(), [](const QPair<QPointF,QPointF>& a, const QPair<QPointF,QPointF>& b) -> bool {
-		return a.second.x() < b.second.x();
-	});
-	std::sort(raw_phi_bottomY.begin(), raw_phi_bottomY.end(), [](const QPair<QPointF,QPointF>& a, const QPair<QPointF,QPointF>& b) -> bool {
-		return a.second.y() < b.second.y();
-	});
-
-	m_border_topX = -1;
-	m_border_topY = -1;
-	m_border_bottomX = -1;
-	m_border_bottomY = -1;
-
-
-	for (auto& elem : raw_phi_topX) {
-		if ((elem.first - elem.second).manhattanLength() <= m_tolerance) {
-			m_border_topX = elem.second.x();
-		} else {
+void CalibrationDialog::Border::paint(QPainter* p, double w, double h)
+{
+	switch (state) {
+		case 0:
+			p->setPen(QPen(Qt::black, 1.0));
 			break;
-		}
-	}
-
-	for (auto& elem : raw_phi_topY) {
-		if ((elem.first - elem.second).manhattanLength() <= m_tolerance) {
-			m_border_topY = elem.second.y();
-		} else {
+		case 1:
+			p->setPen(QPen(Qt::red, 3.0));
 			break;
-		}
-	}
-
-	for (auto& elem : raw_phi_bottomX) {
-		if ((elem.first - elem.second).manhattanLength() <= m_tolerance) {
-			m_border_bottomX = elem.second.x();
-		} else {
+		case 2:
+			p->setPen(QPen(Qt::red, 1.0));
 			break;
-		}
 	}
+	if (horizontal) p->drawLine(0, pos, w, pos);
+	else p->drawLine(pos, 0, pos, h);
+}
 
-	for (auto& elem : raw_phi_bottomY) {
-		if ((elem.first - elem.second).manhattanLength() <= m_tolerance) {
-			m_border_bottomY = elem.second.y();
-		} else {
-			break;
-		}
-	}
-
+void CalibrationDialog::Border::move(double new_pos)
+{
+	if (pos < limit && new_pos < limit) pos = new_pos;
+	if (pos > limit && new_pos > limit) pos = new_pos;
 }

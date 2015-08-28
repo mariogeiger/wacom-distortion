@@ -27,13 +27,13 @@ public:
 	const QVector<QPointF>& getRawPoints() const {
 		return m_raw_points;
 	}
-	double getBorderTopX() const { return m_border_topX; }
-	double getBorderTopY() const { return m_border_topY; }
-	double getBorderBottomX() const { return m_border_bottomX; }
-	double getBorderBottomY() const { return m_border_bottomY; }
+	double getBorderTopX() const { return m_borders[0].pos; }
+	double getBorderTopY() const { return m_borders[1].pos; }
+	double getBorderBottomX() const { return m_borders[2].pos; }
+	double getBorderBottomY() const { return m_borders[3].pos; }
 	double getScreenWidth() const { return m_w; }
 	double getScreenHeight() const { return m_h; }
-	void setCreateBorders(bool on) { m_borders = on; }
+	void setCreateBorders(bool on) { m_show_borders = on; }
 	void setText(const QString& text) { m_text = text; }
 	void setTolerance(double t) { m_tolerance = t; }
 	void clearAll();
@@ -41,24 +41,34 @@ public:
 private:
 	virtual void tabletEvent(QTabletEvent* event);
 	virtual void mousePressEvent(QMouseEvent* event);
+	virtual void mouseMoveEvent(QMouseEvent* event);
 	virtual void paintEvent(QPaintEvent* event);
 	virtual void closeEvent(QCloseEvent* event);
 	virtual void keyPressEvent(QKeyEvent* event);
 	virtual void moveEvent(QMoveEvent* event);
 
-	void click_border(int x, int y);
-	void check_borders();
+	void add_point(const QPointF& point);
 
 	double m_w, m_h;
-	double m_border_topX;
-	double m_border_topY;
-	double m_border_bottomX;
-	double m_border_bottomY;
+
 	QVector<QPointF> m_phy_points;
 	QVector<QPointF> m_raw_points;
-	bool m_borders;
+	bool m_show_borders;
 	double m_tolerance;
 	QString m_text;
+
+	QPointF m_tabletGlobalPosF;
+
+	struct Border {
+		double pos;
+		double limit;
+		bool horizontal;
+		int state;
+
+		void paint(QPainter* p, double w, double h);
+		void move(double new_pos);
+	} m_borders[4];
+
 };
 
 #endif // CALIBRATIONDIALOG_HH

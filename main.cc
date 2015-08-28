@@ -77,7 +77,8 @@ int main(int argc, char *argv[])
 	}
 
 	w.setText("Please add as much control points as you want in the borders.\n"
-			  "Lines will appear to define border width.\n"
+			  "The lines determines which part of the border must be corrected.\n"
+			  "Grab and release the lines by clicking on it.\n"
 			  "The F key switches the window in fullscreen mode.\n"
 			  "You can remove the last point with backspace.\n"
 			  "The key Delete resets all the points and borders.\n"
@@ -111,6 +112,12 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
+void fix_area(double slope, double offset, double range, double old_min, double old_max, int* new_min, int* new_max)
+{
+	*new_min = std::round(old_min - (old_max - old_min) * offset / (slope * range));
+	*new_max = std::round((old_max - old_min) / slope) + *new_min;
+}
+
 int linearCalibration(const QString& device, CalibrationDialog* w, const QVector<int>& area)
 {
 	w->setText("Please add contol points to calibrate the Center of the screen.\n"
@@ -119,20 +126,14 @@ int linearCalibration(const QString& device, CalibrationDialog* w, const QVector
 	w->setCreateBorders(false);
 
 	if (w->exec() == QDialog::Accepted) {
-		QVector<double> rawX, rawY, phyX, phyY;
 		const QVector<QPointF>& raw = w->getRawPoints();
 		const QVector<QPointF>& phy = w->getPhysicalPoints();
-		for (int i = 0; i < raw.size(); ++i) {
-			rawX << raw[i].x();
-			rawY << raw[i].y();
-			phyX << phy[i].x();
-			phyY << phy[i].y();
-		}
+
 		int new_area[4];
 		QVector<double> a, arhs;
 		for (int i = 0; i < raw.size(); ++i) {
-			a << rawX[i] << 1.0;
-			arhs << phyX[i];
+			a << raw[i].x() << 1.0;
+			arhs << phy[i].x();
 		}
 		double res[2];
 		int r = least_squares(arhs.size(), 2, a.data(), arhs.data(), res);
@@ -141,13 +142,12 @@ int linearCalibration(const QString& device, CalibrationDialog* w, const QVector
 			return 1;
 		}
 		// phy = res[0] * raw + res[1]
-		new_area[0] = area[0] - round(res[1] * (area[2]-area[0]) / (res[0] * w->getScreenWidth()));
-		new_area[2] = round((area[2] - area[0]) / res[0] + area[0] - (res[1] * (area[2] - area[0])) / (res[0] * w->getScreenWidth()));
+		fix_area(res[0], res[1], w->getScreenWidth(), area[0], area[2], &new_area[0], &new_area[2]);
 
 		a.clear(); arhs.clear();
 		for (int i = 0; i < raw.size(); ++i) {
-			a << rawY[i] << 1.0;
-			arhs << phyY[i];
+			a << raw[i].y() << 1.0;
+			arhs << phy[i].y();
 		}
 		r = least_squares(arhs.size(), 2, a.data(), arhs.data(), res);
 		if (r != 0) {
@@ -155,8 +155,7 @@ int linearCalibration(const QString& device, CalibrationDialog* w, const QVector
 			return 1;
 		}
 		// phy = res[0] * raw + res[1]
-		new_area[1] = area[1] - round(res[1] * (area[3]-area[1]) / (res[0] * w->getScreenHeight()));
-		new_area[3] = round((area[3] - area[1]) / res[0] + area[1] - (res[1] * (area[3] - area[1])) / (res[0] * w->getScreenHeight()));
+		fix_area(res[0], res[1], w->getScreenHeight(), area[1], area[3], &new_area[1], &new_area[3]);
 
 		QString command = "xinput set-int-prop \"";
 		command += device.isEmpty() ? "<device>" : device;
