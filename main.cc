@@ -101,13 +101,14 @@ int main(int argc, char *argv[])
 		w.clearAll();
 	}
 
-	w.setText("Please click with the mouse to set the widths of the border distortion.\n"
-			  "Then add as much control points as you want in the borders.\n"
+	w.setText("Please add as much control points as you want in the borders.\n"
+			  "Lines will appear to define border width.\n"
 			  "The F key switches the window in fullscreen mode.\n"
 			  "You can remove the last point with backspace.\n"
 			  "The key Delete resets all the points and borders.\n"
 			  "Please press Enter when you are finished.");
 	w.setCreateBorders(true);
+	w.setTolerance(2.0);
 
 	if (w.exec() == QDialog::Accepted) {
 		qDebug("dialog accepted");
