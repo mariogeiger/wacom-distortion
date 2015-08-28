@@ -201,6 +201,7 @@ void CalibrationDialog::check_border()
 	if (!_create_borders) return;
 	if (_raw_points.isEmpty()) return;
 	if (_raw_points.size() != _phy_points.size()) return;
+        return;
 
 	QVector<QPair<QPointF,QPointF>> raw_phi;
 	for (int i = 0; i < _raw_points.size(); ++i) {
