@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 	QString device = parser.positionalArguments().value(0, "");
 	bool ok;
 	double tolerance = parser.value(toleranceOption).toDouble(&ok);
-	if (!ok || tolerance < 0.0) tolerance = 2.0;
+	if (!ok || tolerance < 0.0) tolerance = 5.0;
 
 
 	if (device.isEmpty()) {
@@ -141,7 +141,7 @@ int linearCalibration(const QString& device, CalibrationDialog* w, const QVector
 			return 1;
 		}
 		// phy = res[0] * raw + res[1]
-		new_area[0] = area[0] - round(res[1] * (area[2]-area[0]) / (double)(res[0] * w->getScreenWidth()));
+		new_area[0] = area[0] - round(res[1] * (area[2]-area[0]) / (res[0] * w->getScreenWidth()));
 		new_area[2] = round((area[2] - area[0]) / res[0] + area[0] - (res[1] * (area[2] - area[0])) / (res[0] * w->getScreenWidth()));
 
 		a.clear(); arhs.clear();
@@ -155,7 +155,7 @@ int linearCalibration(const QString& device, CalibrationDialog* w, const QVector
 			return 1;
 		}
 		// phy = res[0] * raw + res[1]
-		new_area[1] = area[1] - round(res[1] * (area[3]-area[1]) / (double)(res[0] * w->getScreenHeight()));
+		new_area[1] = area[1] - round(res[1] * (area[3]-area[1]) / (res[0] * w->getScreenHeight()));
 		new_area[3] = round((area[3] - area[1]) / res[0] + area[1] - (res[1] * (area[3] - area[1])) / (res[0] * w->getScreenHeight()));
 
 		QString command = "xinput set-int-prop \"";

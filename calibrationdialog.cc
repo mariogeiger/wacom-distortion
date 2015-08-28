@@ -2,6 +2,7 @@
 #include <QPainter>
 #include <QScreen>
 #include <QGuiApplication>
+#include <QMessageBox>
 #include <algorithm>
 
 CalibrationDialog::CalibrationDialog(QWidget *parent)
@@ -112,8 +113,15 @@ void CalibrationDialog::keyPressEvent(QKeyEvent* event)
 		setWindowState(windowState() ^ Qt::WindowFullScreen);
 	}
 	if (event->key() == Qt::Key_Delete) {
-		clearAll();
-		repaint();
+		int ans = QMessageBox::question(
+					  this, "Delete all points",
+					  "Do you want to remove all the points ?",
+					  QMessageBox::Yes, QMessageBox::Cancel);
+
+		if (ans == QMessageBox::Yes) {
+			clearAll();
+			repaint();
+		}
 	}
 	if (event->key() == Qt::Key_Backspace) {
 		if (m_phy_points.size() > 0) {
