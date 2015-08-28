@@ -46,12 +46,13 @@ private:
 	virtual void moveEvent(QMoveEvent* event);
 
 	void click_border(int x, int y);
+	void check_border();
 
-	int _sw, _sh;
-	int _border_topX;
-	int _border_topY;
-	int _border_bottomX;
-	int _border_bottomY;
+	double _sw, _sh;
+	double _border_topX;
+	double _border_topY;
+	double _border_bottomX;
+	double _border_bottomY;
 	QVector<QPointF> _phy_points;
 	QVector<QPointF> _raw_points;
 	QTimer _timer_pressure;

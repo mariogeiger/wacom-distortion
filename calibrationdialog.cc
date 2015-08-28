@@ -2,13 +2,18 @@
 #include <QPainter>
 #include <QScreen>
 #include <QGuiApplication>
+#include <algorithm>
 
 CalibrationDialog::CalibrationDialog(QWidget *parent)
 	: QDialog(parent)
 {
 	QList<QScreen*> screens = QGuiApplication::screens();
-	_sw = screens.first()->size().width();
-	_sh = screens.first()->size().height();
+	if (screens.isEmpty()) {
+		_sw = _sh = -1;
+	} else {
+		_sw = screens.first()->size().width();
+		_sh = screens.first()->size().height();
+	}
 
 	clearAll();
 	_create_borders = true;
@@ -33,12 +38,12 @@ void CalibrationDialog::clearAll()
 	_border_bottomY = -1;
 	_phy_points.clear();
 	_raw_points.clear();
+	setCursor(QCursor(Qt::CrossCursor));
 }
 
 /* Quand on survole avec le stylet il n'y a pas d'event déclanché
  *
  * Quand on presse ca déclanche un tabletEvent puis un mousePressEvent puis plein de tabletEvent
- *
  */
 void CalibrationDialog::tabletEvent(QTabletEvent* event)
 {
@@ -55,6 +60,7 @@ void CalibrationDialog::tabletEvent(QTabletEvent* event)
 			} else if (_raw_points.size() < _phy_points.size()) {
 				_raw_points << event->globalPosF();
 				setCursor(QCursor(Qt::CrossCursor));
+				check_border();
 			}
 			qDebug("stylus : Point added, %d in raw, %d in phy", _raw_points.size(), _phy_points.size());
 		}
@@ -80,6 +86,7 @@ void CalibrationDialog::mousePressEvent(QMouseEvent* event)
 			_phy_points << event->globalPos();
 		} else if (_raw_points.size() < _phy_points.size()) {
 			_raw_points << event->globalPos();
+			check_border();
 		}
 		qDebug("mouse : Point added, %d in raw, %d in phy", _raw_points.size(), _phy_points.size());
 	}
@@ -140,13 +147,14 @@ void CalibrationDialog::keyPressEvent(QKeyEvent* event)
 		repaint();
 	}
 	if (event->key() == Qt::Key_Backspace) {
-		// p : xxxx
-		// r : xxx
 		if (_phy_points.size() > 0) {
 			if (_phy_points.size() == _raw_points.size()) {
 				_raw_points.removeLast();
+				setCursor(QCursor(Qt::BlankCursor));
 			} else {
 				_phy_points.removeLast();
+				setCursor(QCursor(Qt::CrossCursor));
+				check_border();
 			}
 		}
 		repaint();
@@ -186,4 +194,60 @@ void CalibrationDialog::click_border(int x, int y)
 	if (cy == smallest) {
 		_border_bottomY = y;
 	}
+}
+
+void CalibrationDialog::check_border()
+{
+	if (!_create_borders) return;
+	if (_raw_points.isEmpty()) return;
+	if (_raw_points.size() != _phy_points.size()) return;
+
+	QVector<QPair<QPointF,QPointF>> raw_phi;
+	for (int i = 0; i < _raw_points.size(); ++i) {
+		raw_phi << QPair<QPointF,QPointF>(_raw_points[i], _phy_points[i]);
+	}
+	QPointF middle(_sw/2.0, _sh/2.0);
+	std::sort(raw_phi.begin(), raw_phi.end(), [&](const QPair<QPointF,QPointF>& a, const QPair<QPointF,QPointF>& b) -> bool {
+		QPointF A = a.first - middle;
+		QPointF B = b.first - middle;
+		return std::max(A.x(), A.y()) < std::max(B.x(), B.y());
+	});
+
+	_border_topX = _sw + 1;
+	_border_topY = _sh + 1;
+	_border_bottomX = -1;
+	_border_bottomY = -1;
+
+	for (int i = 0; i < raw_phi.size(); ++i) {
+		if ((raw_phi[i].first-raw_phi[i].second).manhattanLength() <= 1.5) {
+			_border_topX = std::min(_border_topX, raw_phi[i].second.x());
+		} else {
+			if (raw_phi[i].second.x() < _border_topX) break;
+		}
+	}
+
+	for (int i = 0; i < raw_phi.size(); ++i) {
+		if ((raw_phi[i].first-raw_phi[i].second).manhattanLength() <= 1.5) {
+			_border_topY = std::min(_border_topY, raw_phi[i].second.y());
+		} else {
+			if (raw_phi[i].second.y() < _border_topY) break;
+		}
+	}
+
+	for (int i = 0; i < raw_phi.size(); ++i) {
+		if ((raw_phi[i].first-raw_phi[i].second).manhattanLength() <= 1.5) {
+			_border_bottomX = std::max(_border_bottomX, raw_phi[i].second.x());
+		} else {
+			if (raw_phi[i].second.x() > _border_bottomX) break;
+		}
+	}
+
+	for (int i = 0; i < raw_phi.size(); ++i) {
+		if ((raw_phi[i].first-raw_phi[i].second).manhattanLength() <= 1.5) {
+			_border_bottomY = std::max(_border_bottomY, raw_phi[i].second.y());
+		} else {
+			if (raw_phi[i].second.y() > _border_bottomY) break;
+		}
+	}
+
 }
