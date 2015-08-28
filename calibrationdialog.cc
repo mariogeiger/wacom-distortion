@@ -18,7 +18,6 @@ CalibrationDialog::CalibrationDialog(QWidget *parent)
 
 	clearAll();
 	m_show_borders = true;
-	m_tolerance = 1.5;
 
 	setWindowFlags(Qt::Window);
 	setCursor(QCursor(Qt::CrossCursor));

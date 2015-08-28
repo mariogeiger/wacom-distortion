@@ -35,7 +35,6 @@ public:
 	double getScreenHeight() const { return m_h; }
 	void setCreateBorders(bool on) { m_show_borders = on; }
 	void setText(const QString& text) { m_text = text; }
-	void setTolerance(double t) { m_tolerance = t; }
 	void clearAll();
 
 private:
@@ -54,7 +53,6 @@ private:
 	QVector<QPointF> m_phy_points;
 	QVector<QPointF> m_raw_points;
 	bool m_show_borders;
-	double m_tolerance;
 	QString m_text;
 
 	QPointF m_tabletGlobalPosF;

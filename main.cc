@@ -25,19 +25,12 @@ int main(int argc, char *argv[])
 	parser.setApplicationDescription("calibrate the wacom stylus to fix the distortion in the borders");
 	parser.addHelpOption();
 	parser.addPositionalArgument("device", "Name of the device as it appear in xinput");
-	QCommandLineOption toleranceOption("tol",
-									   "Tolerance in pixel to consider a point as perfect",
-									   "tolerance", "2");
-	parser.addOption(toleranceOption);
+
 	QCommandLineOption skipLinearCalibration("skip-linear", "Skip the linear part of the calibration");
 	parser.addOption(skipLinearCalibration);
 
 	parser.process(app);
 	QString device = parser.positionalArguments().value(0, "");
-	bool ok;
-	double tolerance = parser.value(toleranceOption).toDouble(&ok);
-	if (!ok || tolerance < 0.0) tolerance = 5.0;
-
 
 	if (device.isEmpty()) {
 		cout << "No device given in argument" << endl;
@@ -84,7 +77,6 @@ int main(int argc, char *argv[])
 			  "The key Delete resets all the points and borders.\n"
 			  "Please press Enter when you are finished.");
 	w.setCreateBorders(true);
-	w.setTolerance(tolerance);
 
 	if (w.exec() == QDialog::Accepted) {
 		QVector<double> values = calibrate(&w);
