@@ -40,19 +40,26 @@ void CalibrationDialog::clearAll()
 	setCursor(QCursor(Qt::CrossCursor));
 }
 
-void CalibrationDialog::mousePressEvent(QMouseEvent* event)
+void CalibrationDialog::tabletEvent(QTabletEvent* event)
 {
-	if (m_raw_points.size() == m_phy_points.size()) {
-		m_phy_points << event->globalPos();
-		setCursor(QCursor(Qt::BlankCursor));
-	} else if (m_raw_points.size() < m_phy_points.size()) {
-		m_raw_points << event->globalPos();
-		setCursor(QCursor(Qt::CrossCursor));
-		check_borders();
-	}
-	qDebug("Point added, %d in raw, %d in phy", m_raw_points.size(), m_phy_points.size());
+	if (event->type() == QEvent::TabletPress) {
+		if (m_raw_points.size() == m_phy_points.size()) {
+			m_phy_points << event->globalPosF();
+			setCursor(QCursor(Qt::BlankCursor));
+		} else if (m_raw_points.size() < m_phy_points.size()) {
+			m_raw_points << event->globalPosF();
+			setCursor(QCursor(Qt::CrossCursor));
+			check_borders();
+		}
+		qDebug("Point added, %d in raw, %d in phy", m_raw_points.size(), m_phy_points.size());
 
-	repaint();
+		repaint();
+	}
+}
+
+void CalibrationDialog::mousePressEvent(QMouseEvent* )
+{
+
 }
 
 void CalibrationDialog::paintEvent(QPaintEvent*)

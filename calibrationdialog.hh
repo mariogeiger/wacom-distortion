@@ -39,6 +39,7 @@ public:
 	void clearAll();
 
 private:
+	virtual void tabletEvent(QTabletEvent* event);
 	virtual void mousePressEvent(QMouseEvent* event);
 	virtual void paintEvent(QPaintEvent* event);
 	virtual void closeEvent(QCloseEvent* event);
