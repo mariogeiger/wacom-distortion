@@ -13,7 +13,7 @@ extern "C" {
 QTextStream cout(stdout);
 
 int linearCalibration(const QString& device, CalibrationDialog* w, const QVector<int>& area);
-QVector<double> calibrate(CalibrationDialog* w);
+QVector<double> borderCalibration(CalibrationDialog* w);
 QVector<int> readTabletArea(const QString& device);
 
 int main(int argc, char *argv[])
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 	w.setCreateBorders(true);
 
 	if (w.exec() == QDialog::Accepted) {
-		QVector<double> values = calibrate(&w);
+		QVector<double> values = borderCalibration(&w);
 
 		QString command = "xinput set-float-prop ";
 		command += device.isEmpty() ? "<device>" : "\""+device+"\"";
@@ -227,7 +227,7 @@ QVector<double> find_polynomial(double d, QVector<double> raw, QVector<double> p
 	return poly;
 }
 
-QVector<double> calibrate(CalibrationDialog* w)
+QVector<double> borderCalibration(CalibrationDialog* w)
 {
 	QVector<double> values;
 	for (int i = 0; i < 4; ++i) {

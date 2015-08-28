@@ -71,9 +71,6 @@ void CalibrationDialog::mousePressEvent(QMouseEvent* event)
 		if (elem.state == 1) {
 			elem.state = 2;
 			grab = true;
-		} else if (elem.state == 2) {
-			elem.state = 1;
-			grab = true;
 		}
 	}
 
@@ -109,6 +106,16 @@ void CalibrationDialog::mouseMoveEvent(QMouseEvent* event)
 			elem.state = 1;
 		} else if (elem.state == 1) {
 			elem.state = 0;
+		}
+	}
+	update();
+}
+
+void CalibrationDialog::mouseReleaseEvent(QMouseEvent* )
+{
+	for (Border& elem : m_borders) {
+		if (elem.state == 2) {
+			elem.state = 1;
 		}
 	}
 	update();

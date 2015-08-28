@@ -1,8 +1,8 @@
 # wacom-distortion
 Calibration tool for wacom stylus
-### Compile
+### Compilation
     qmake && make
-### Execute
+### Execution
     wacom-distortion <device>
-### Depends
+### Dependencies
 	xinput, qt5, c++11
