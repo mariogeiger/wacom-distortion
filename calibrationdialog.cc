@@ -126,7 +126,7 @@ void CalibrationDialog::mouseReleaseEvent(QMouseEvent* )
 	for (Border& elem : m_borders) {
 		if (elem.state == 2) {
 			elem.state = 1;
-			setCursor(QCursor(Qt::CrossCursor));
+			setCursor(QCursor(Qt::OpenHandCursor));
 		}
 	}
 	update();
@@ -173,9 +173,9 @@ void CalibrationDialog::paintEvent(QPaintEvent*)
 void CalibrationDialog::closeEvent(QCloseEvent* event)
 {
 	int ans = QMessageBox::question(
-				  this, "Skip the calibration",
-				  "Do you want to skip this part of the calibration ?",
-				  QMessageBox::Yes, QMessageBox::Cancel);
+				this, "Skip the calibration",
+				"Do you want to skip this part of the calibration ?",
+				QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Yes);
 
 	if (ans == QMessageBox::Yes) {
 		QWidget::closeEvent(event);
@@ -191,9 +191,9 @@ void CalibrationDialog::keyPressEvent(QKeyEvent* event)
 	}
 	if (event->key() == Qt::Key_Delete) {
 		int ans = QMessageBox::question(
-					  this, "Delete all points",
-					  "Do you want to remove all the points ?",
-					  QMessageBox::Yes, QMessageBox::Cancel);
+					this, "Delete all points",
+					"Do you want to remove all the points ?",
+					QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Yes);
 
 		if (ans == QMessageBox::Yes) {
 			clearAll();
@@ -214,9 +214,9 @@ void CalibrationDialog::keyPressEvent(QKeyEvent* event)
 	}
 	if (event->key() == Qt::Key_Escape) {
 		int ans = QMessageBox::question(
-					  this, "Skip the calibration",
-					  "Do you want to skip this part of the calibration ?",
-					  QMessageBox::Yes, QMessageBox::Cancel);
+					this, "Skip the calibration",
+					"Do you want to skip this part of the calibration ?",
+					QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Yes);
 
 		if (ans == QMessageBox::Yes) {
 			reject();
@@ -253,15 +253,15 @@ void CalibrationDialog::add_point(const QPointF& point)
 void CalibrationDialog::Border::paint(QPainter* p, double w, double h)
 {
 	switch (state) {
-		case 0:
-			p->setPen(QPen(Qt::black, 1.0));
-			break;
-		case 1:
-			p->setPen(QPen(Qt::red, 3.0));
-			break;
-		case 2:
-			p->setPen(QPen(Qt::red, 1.0));
-			break;
+	case 0:
+		p->setPen(QPen(Qt::black, 1.0));
+		break;
+	case 1:
+		p->setPen(QPen(Qt::red, 3.0));
+		break;
+	case 2:
+		p->setPen(QPen(Qt::red, 1.0));
+		break;
 	}
 	if (horizontal) p->drawLine(0, pos, w, pos);
 	else p->drawLine(pos, 0, pos, h);

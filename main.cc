@@ -71,11 +71,10 @@ int main(int argc, char *argv[])
 
 	w.setText("Please add as much control points as you want in the borders.\n"
 			  "The lines determines which part of the border must be corrected.\n"
-			  "Grab and release the lines by clicking on it.\n"
-			  "The F key switches the window in fullscreen mode.\n"
-			  "You can remove the last point with backspace.\n"
-			  "The key Delete resets all the points and borders.\n"
-			  "Please press Enter when you are finished.");
+			  "The [F] key switches the window in fullscreen mode.\n"
+			  "You can remove the last point with [backspace].\n"
+			  "The [delete] key resets all.\n"
+			  "Please press [enter] when you are finished.");
 	w.setCreateBorders(true);
 
 	if (w.exec() == QDialog::Accepted) {
@@ -113,8 +112,11 @@ void fix_area(double slope, double offset, double range, double old_min, double 
 int linearCalibration(const QString& device, CalibrationDialog* w, const QVector<int>& area)
 {
 	w->setText("Please add contol points to calibrate the Center of the screen.\n"
-			  "Don't add control points too close to the borders. The central calibration must be linear.\n"
-			  "Please press [enter] when you are finished.");
+			   "Don't add control points too close to the borders.\n"
+			   "The [F] key switches the window in fullscreen mode.\n"
+			   "You can remove the last point with [backspace].\n"
+			   "The [delete] key resets all.\n"
+			   "Please press [enter] when you are finished.");
 	w->setCreateBorders(false);
 
 	if (w->exec() == QDialog::Accepted) {
