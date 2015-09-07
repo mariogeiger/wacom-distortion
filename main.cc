@@ -29,6 +29,9 @@ int main(int argc, char *argv[])
 	QCommandLineOption skipLinearCalibration("skip-linear", "Skip the linear part of the calibration");
 	parser.addOption(skipLinearCalibration);
 
+	QCommandLineOption checkResult("check-result", "Check the result at the end");
+	parser.addOption(checkResult);
+
 	parser.process(app);
 	QString device = parser.positionalArguments().value(0, "");
 
@@ -75,7 +78,7 @@ int main(int argc, char *argv[])
 			  "You can remove the last point with [backspace].\n"
 			  "The [delete] key resets all.\n"
 			  "Please press [enter] when you are finished.");
-	w.setCreateBorders(true);
+	w.setBorders(true);
 
 	if (w.exec() == QDialog::Accepted) {
 		QVector<double> values = borderCalibration(&w);
@@ -99,6 +102,12 @@ int main(int argc, char *argv[])
 		cout << "Distortion calibration skipped" << endl;
 	}
 
+	if (parser.isSet(checkResult)) {
+		w.setText("Now you can test the result.");
+		w.setBorders(false);
+		w.exec();
+	}
+
 	cout << "Finish successfully" << endl;
 	return 0;
 }
@@ -117,7 +126,7 @@ int linearCalibration(const QString& device, CalibrationDialog* w, const QVector
 			   "You can remove the last point with [backspace].\n"
 			   "The [delete] key resets all.\n"
 			   "Please press [enter] when you are finished.");
-	w->setCreateBorders(false);
+	w->setBorders(false);
 
 	if (w->exec() == QDialog::Accepted) {
 		const QVector<QPointF>& raw = w->getRawPoints();
