@@ -80,7 +80,7 @@ void CalibrationDialog::mousePressEvent(QMouseEvent* event)
 		return;
 	}
 
-	if (event->globalPos() == m_tabletGlobalPosF.toPoint()) {
+	if (event->globalPos().x() == int(m_tabletGlobalPosF.x()) && event->globalPos().y() == int(m_tabletGlobalPosF.y())) {
 		add_point(m_tabletGlobalPosF);
 	} else {
 		add_point(event->globalPos());
