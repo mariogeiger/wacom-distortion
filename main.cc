@@ -29,6 +29,9 @@ int main(int argc, char *argv[])
 	QCommandLineOption skipLinearCalibration("skip-linear", "Skip the linear part of the calibration");
 	parser.addOption(skipLinearCalibration);
 
+	QCommandLineOption checkResult("check-result", "Check the result at the end");
+	parser.addOption(checkResult);
+
 	parser.process(app);
 	QString device = parser.positionalArguments().value(0, "");
 
@@ -71,12 +74,11 @@ int main(int argc, char *argv[])
 
 	w.setText("Please add as much control points as you want in the borders.\n"
 			  "The lines determines which part of the border must be corrected.\n"
-			  "Grab and release the lines by clicking on it.\n"
-			  "The F key switches the window in fullscreen mode.\n"
-			  "You can remove the last point with backspace.\n"
-			  "The key Delete resets all the points and borders.\n"
-			  "Please press Enter when you are finished.");
-	w.setCreateBorders(true);
+			  "The [F] key switches the window in fullscreen mode.\n"
+			  "You can remove the last point with [backspace].\n"
+			  "The [delete] key resets all.\n"
+			  "Please press [enter] when you are finished.");
+	w.setBorders(true);
 
 	if (w.exec() == QDialog::Accepted) {
 		QVector<double> values = borderCalibration(&w);
@@ -100,6 +102,12 @@ int main(int argc, char *argv[])
 		cout << "Distortion calibration skipped" << endl;
 	}
 
+	if (parser.isSet(checkResult)) {
+		w.setText("Now you can test the result.");
+		w.setBorders(false);
+		w.exec();
+	}
+
 	cout << "Finish successfully" << endl;
 	return 0;
 }
@@ -113,9 +121,12 @@ void fix_area(double slope, double offset, double range, double old_min, double 
 int linearCalibration(const QString& device, CalibrationDialog* w, const QVector<int>& area)
 {
 	w->setText("Please add contol points to calibrate the Center of the screen.\n"
-			  "Don't add control points too close to the borders. The central calibration must be linear.\n"
-			  "Please press [enter] when you are finished.");
-	w->setCreateBorders(false);
+			   "Don't add control points too close to the borders.\n"
+			   "The [F] key switches the window in fullscreen mode.\n"
+			   "You can remove the last point with [backspace].\n"
+			   "The [delete] key resets all.\n"
+			   "Please press [enter] when you are finished.");
+	w->setBorders(false);
 
 	if (w->exec() == QDialog::Accepted) {
 		const QVector<QPointF>& raw = w->getRawPoints();
