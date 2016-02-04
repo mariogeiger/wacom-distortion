@@ -36,6 +36,7 @@ public:
 	double getScreenHeight() const { return m_h; }
 	void setCreateBorders(bool on) { m_show_borders = on; }
 	void setText(const QString& text) { m_text = text; }
+	void setLineMode(bool on) { m_lineMode = on; }
 	void clearAll();
 
 private:
@@ -69,6 +70,8 @@ private:
 		void paint(QPainter* p, double w, double h);
 		void move(double new_pos);
 	} m_borders[4];
+
+	bool m_lineMode;
 };
 
 #endif // CALIBRATIONDIALOG_HH
