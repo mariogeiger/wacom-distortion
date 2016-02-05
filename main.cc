@@ -64,9 +64,9 @@ int linearCalibration(const QString& device, CalibrationDialog* w, const QVector
 		// phy = res[0] * raw + res[1]
 		fix_area(res[0], res[1], w->getScreenHeight(), area[1], area[3], &new_area[1], &new_area[3]);
 
-		QString command = "xinput set-int-prop \"";
-		command += device.isEmpty() ? "<device>" : device;
-		command += "\" \"Wacom Tablet Area\" 32 ";
+		QString command = "xinput set-int-prop ";
+		command += device.isEmpty() ? "<device>" : "\""+device+"\"";
+		command += " \"Wacom Tablet Area\" 32 ";
 		for (int i = 0; i < 4; ++i) command += QString(" %1").arg(new_area[i]);
 
 		if (device.isEmpty()) {

@@ -62,18 +62,14 @@ public:
 		return m_raw_points;
 	}
 	double getBorderLimit(int border) const { return m_borders[border].pos; }
-	/*double getBorderTopX() const { return m_borders[0].pos; }
-	double getBorderTopY() const { return m_borders[1].pos; }
-	double getBorderBottomX() const { return m_borders[2].pos; }
-	double getBorderBottomY() const { return m_borders[3].pos; }*/
 	double getScreenWH(int border) const { return border % 2 == 0 ? m_w : m_h; }
+	double getPolyCoeff(int border, int i) const;
 	double getScreenWidth() const { return m_w; }
 	double getScreenHeight() const { return m_h; }
 	void setBorders(bool on) { m_show_borders = on; }
 	void setText(const QString& text) { m_text = text; }
 	void setLineMode(bool on) { m_lineMode = on; }
 	void clearAll();
-	double getPolyCoeff(int border, int i) const;
 
 private:
 	virtual void tabletEvent(QTabletEvent* event);
