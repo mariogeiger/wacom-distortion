@@ -75,6 +75,7 @@ int linearCalibration(const QString& device, CalibrationDialog* w, const QVector
 			cout << "> " << command << endl;
 			r = QProcess::execute(command);
 			if (r != 0) {
+				cout << "xinput returns " << r << endl;
 				cout << "Error, cannot set the Wacom Tablet Area parameters" << endl;
 				return 1;
 			}
@@ -116,14 +117,15 @@ int main(int argc, char *argv[])
 		cout << "> " << command << endl;
 		int r = QProcess::execute(command);
 		if (r != 0) {
-			cout << "Error, cannot set the distortion parameters to identity. It will quit." << endl;
-			return 1;
+			cout << "xinput returns " << r << endl;
+			cout << "Error, cannot set the distortion parameters to identity." << endl;
 		}
 
 		area = readTabletArea(device);
 		if (area.isEmpty())	{
-			cout << "Error, cannot read Wacom Tablet Area parameter. It will quit." << endl;
-			return 1;
+			cout << "Error, cannot read Wacom Tablet Area parameter." << endl;
+			cout << "Considere Wacom Tablet Area to be 0 0 10000 10000" << endl;
+			area << 0 << 0 << 10000 << 10000;
 		}
 	} else {
 		cout << "Considere Wacom Tablet Area to be 0 0 10000 10000" << endl;
@@ -132,14 +134,15 @@ int main(int argc, char *argv[])
 
 	CalibrationDialog w;
 
+
 	if (!parser.isSet(skipLinearCalibration)) {
-		int r = linearCalibration(device, &w, area);
-		if (r != 0) {
-			cout << "Quit..." << endl;
-			return 1;
-		}
+		cout << endl << "LINEAR CALIBRATION PHASE" << endl;
+		linearCalibration(device, &w, area);
 		w.clearAll();
 	}
+
+
+	cout << endl << "BORDER DISTORTION CALIBRATION PHASE" << endl;
 
 	w.setText("With a ruler make a curve for each border.\n"
 			  "The lines determines which part of the border must be corrected.\n"
@@ -165,8 +168,7 @@ int main(int argc, char *argv[])
 			cout << "> " << command << endl;
 			int r = QProcess::execute(command);
 			if (r != 0) {
-				cout << "Error, cannot set Wacom Border Distortion parameters. Quit..." << endl;
-				return 1;
+				cout << "Error, cannot set Wacom Border Distortion parameters." << endl;
 			}
 		}
 	} else {
@@ -180,7 +182,6 @@ int main(int argc, char *argv[])
 		w.exec();
 	}
 
-	cout << "Finish successfully" << endl;
 	return 0;
 }
 
@@ -195,7 +196,8 @@ QVector<int> readTabletArea(const QString& device)
 
 	cout << QString("> xinput list-props \"%1\"").arg(device) << endl;
 
-	qDebug("xinput return %d", p.exitCode());
+	if (p.exitCode() != 0) cout << "xinput returns " << p.exitCode() << endl;
+	//qDebug("xinput return %d", p.exitCode());
 
 	// parse output
 	QByteArray output = p.readAllStandardOutput();
@@ -226,7 +228,11 @@ QVector<double> borderCalibration(CalibrationDialog* w)
 	}
 
 	for (int border = 0; border < 4; ++border) {
-		values[6 * border] = w->getBorderLimit(border) / w->getScreenWH(border);
+		if (border < 2)
+			values[6 * border] = w->getBorderLimit(border) / w->getScreenWH(border);
+		else
+			values[6 * border] = 1.0 - w->getBorderLimit(border) / w->getScreenWH(border);
+
 		for (int i = 0; i < 5; ++ i) {
 			values[6 * border + i + 1] = w->getPolyCoeff(border, i);
 		}
