@@ -177,7 +177,7 @@ int least_squares(int n, int m, const double* A, const double* b, double* x)
  * n = number of equations to minimize
  * p = number of equations to respect
  */
-int least_squares_constraint(int m, int n, int p,
+int least_squares_constraint(int n, int m, int p,
 								  const double* A, const double* b,
 								  const double* C, const double* e,
 								  double* x)
@@ -231,4 +231,14 @@ int least_squares_constraint(int m, int n, int p,
 	free(rhs);
 	free(sol);
 	return k;
+}
+
+double polynomial_evaluate(int n, const double* poly, double x)
+{
+	double y = poly[0];
+	for (int i = 1; i < n; ++i) {
+		y *= x;
+		y += poly[i];
+	}
+	return y;
 }

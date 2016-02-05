@@ -14,30 +14,66 @@
 #include <QPointF>
 #include <QTimer>
 
+/*         Top Y
+ *    +--------------+
+ * Top|              |
+ *  X |              | Bottom X
+ *    |              |
+ *    +--------------+
+ *        Bottom Y
+ *
+ *
+ *
+ *     +-----------------------------+
+ *     |                      |      |
+ *     |                      |      |
+ *     |                      |      |
+ *     |                      |      |<-- Screen border
+ *     |                      |      |
+ *     |                      |      |
+ *     |    Axis of unit      |      |
+ * <---1----------------------|------0
+ *     |                      |      |
+ *     +-----------------------------+
+ *                            ^
+ *                BorderLimit |
+ *
+ */
+
 class CalibrationDialog : public QDialog
 {
 	Q_OBJECT
 
 public:
+	enum Border {
+		TopX = 0,
+		TopY = 1,
+		BottomX = 2,
+		BottomY = 3
+	};
+
 	CalibrationDialog(QWidget *parent = 0);
 	~CalibrationDialog();
 
-	const QVector<QPointF>& getPhysicalPoints() const {
+	inline const QVector<QPointF>& getPhysicalPoints() const {
 		return m_phy_points;
 	}
-	const QVector<QPointF>& getRawPoints() const {
+	inline const QVector<QPointF>& getRawPoints() const {
 		return m_raw_points;
 	}
-	double getBorderTopX() const { return m_borders[0].pos; }
+	double getBorderLimit(int border) const { return m_borders[border].pos; }
+	/*double getBorderTopX() const { return m_borders[0].pos; }
 	double getBorderTopY() const { return m_borders[1].pos; }
 	double getBorderBottomX() const { return m_borders[2].pos; }
-	double getBorderBottomY() const { return m_borders[3].pos; }
+	double getBorderBottomY() const { return m_borders[3].pos; }*/
+	double getScreenWH(int border) const { return border % 2 == 0 ? m_w : m_h; }
 	double getScreenWidth() const { return m_w; }
 	double getScreenHeight() const { return m_h; }
 	void setBorders(bool on) { m_show_borders = on; }
 	void setText(const QString& text) { m_text = text; }
 	void setLineMode(bool on) { m_lineMode = on; }
 	void clearAll();
+	double getPolyCoeff(int border, int i) const;
 
 private:
 	virtual void tabletEvent(QTabletEvent* event);
@@ -51,6 +87,7 @@ private:
 	virtual void showEvent(QShowEvent* event);
 
 	void add_point(const QPointF& point);
+	void fitCurves();
 
 	double m_w, m_h;
 
@@ -61,7 +98,7 @@ private:
 
 	QPointF m_tabletGlobalPosF;
 
-	struct Border {
+	struct BorderLimit {
 		double pos;
 		double limit;
 		bool horizontal;
@@ -72,6 +109,16 @@ private:
 	} m_borders[4];
 
 	bool m_lineMode;
+	struct Curve {
+		QList<QPointF> pts;
+		int border;
+
+		// comments holds for TopX border
+		double ab[2]; // phy_x = a*y + b; y in pixels, phy_x [0,1] unit
+		double poly[5]; // order 4 polynomial phy_x = Poly(raw_x)
+	};
+
+	QList<Curve> m_curves;
 };
 
 #endif // CALIBRATIONDIALOG_HH

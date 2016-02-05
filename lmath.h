@@ -23,10 +23,13 @@ int least_squares(int n, int m, const double* A, const double* b, double* x);
  * C : p x m Matrix
  * e : p Vector
  */
-int least_squares_constraint(int m, int n, int p,
+int least_squares_constraint(int n, int m, int p,
 								  const double* A, const double* b,
 								  const double* C, const double* e,
 								  double* x);
 
+
+
+double polynomial_evaluate(int n, const double* poly, double x);
 
 #endif // LMATH_H

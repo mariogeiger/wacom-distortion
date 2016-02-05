@@ -16,102 +16,6 @@ int linearCalibration(const QString& device, CalibrationDialog* w, const QVector
 QVector<double> borderCalibration(CalibrationDialog* w);
 QVector<int> readTabletArea(const QString& device);
 
-int main(int argc, char *argv[])
-{
-	QApplication app(argc, argv);
-	app.setApplicationName("wacom-distortion");
-
-	QCommandLineParser parser;
-	parser.setApplicationDescription("calibrate the wacom stylus to fix the distortion in the borders");
-	parser.addHelpOption();
-	parser.addPositionalArgument("device", "Name of the device as it appear in xinput");
-
-	QCommandLineOption skipLinearCalibration("skip-linear", "Skip the linear part of the calibration");
-	parser.addOption(skipLinearCalibration);
-
-	QCommandLineOption checkResult("check-result", "Check the result at the end");
-	parser.addOption(checkResult);
-
-	parser.process(app);
-	QString device = parser.positionalArguments().value(0, "");
-
-	if (device.isEmpty()) {
-		cout << "No device given in argument" << endl;
-	}
-
-	QVector<int> area;
-	if (!device.isEmpty()) {
-		QString command = QString(
-					"xinput set-float-prop \"%1\" \"Wacom Border Distortion\" "
-					"0 0 0 1 0   0 0 0 1 0   0 0 0 1 0   0 0 0 1 0").arg(device);
-		cout << command << endl;
-		int r = QProcess::execute(command);
-		if (r != 0) {
-			cout << "Error, cannot set the distortion parameters to identity. It will quit." << endl;
-			return 1;
-		}
-
-		area = readTabletArea(device);
-		if (area.isEmpty())	{
-			cout << "Error, cannot read Wacom Tablet Area parameter. It will quit." << endl;
-			return 1;
-		}
-	} else {
-		cout << "Considere Wacom Tablet Area to be 0 0 10000 10000" << endl;
-		area << 0 << 0 << 10000 << 10000;
-	}
-
-	CalibrationDialog w;
-
-	if (!parser.isSet(skipLinearCalibration)) {
-		int r = linearCalibration(device, &w, area);
-		if (r != 0) {
-			cout << "Quit..." << endl;
-			return 1;
-		}
-		w.clearAll();
-	}
-
-	w.setText("Please add as much control points as you want in the borders.\n"
-			  "The lines determines which part of the border must be corrected.\n"
-			  "The [F] key switches the window in fullscreen mode.\n"
-			  "You can remove the last point with [backspace].\n"
-			  "The [delete] key resets all.\n"
-			  "Please press [enter] when you are finished.");
-	w.setBorders(true);
-
-	if (w.exec() == QDialog::Accepted) {
-		QVector<double> values = borderCalibration(&w);
-
-		QString command = "xinput set-float-prop ";
-		command += device.isEmpty() ? "<device>" : "\""+device+"\"";
-		command += " \"Wacom Border Distortion\"";
-		for (int i = 0; i < values.size(); ++i) command += QString(" %1").arg(values[i]);
-
-		if (device.isEmpty()) {
-			cout << "You have to execute :\n" << command << endl;
-		} else {
-			cout << command << endl;
-			int r = QProcess::execute(command);
-			if (r != 0) {
-				cout << "Error, cannot set Wacom Border Distortion parameters. Quit..." << endl;
-				return 1;
-			}
-		}
-	} else {
-		cout << "Distortion calibration skipped" << endl;
-	}
-
-	if (parser.isSet(checkResult)) {
-		w.setText("Now you can test the result.");
-		w.setBorders(false);
-		w.exec();
-	}
-
-	cout << "Finish successfully" << endl;
-	return 0;
-}
-
 void fix_area(double slope, double offset, double range, double old_min, double old_max, int* new_min, int* new_max)
 {
 	*new_min = std::round(old_min - (old_max - old_min) * offset / (slope * range));
@@ -168,7 +72,7 @@ int linearCalibration(const QString& device, CalibrationDialog* w, const QVector
 		if (device.isEmpty()) {
 			cout << "You have to execute :\n" << command << endl;
 		} else {
-			cout << command << endl;
+			cout << "> " << command << endl;
 			r = QProcess::execute(command);
 			if (r != 0) {
 				cout << "Error, cannot set the Wacom Tablet Area parameters" << endl;
@@ -181,6 +85,105 @@ int linearCalibration(const QString& device, CalibrationDialog* w, const QVector
 	return 0;
 }
 
+int main(int argc, char *argv[])
+{
+	QApplication app(argc, argv);
+	app.setApplicationName("wacom-distortion");
+
+	QCommandLineParser parser;
+	parser.setApplicationDescription("calibrate the wacom stylus to fix the distortion in the borders");
+	parser.addHelpOption();
+	parser.addPositionalArgument("device", "Name of the device as it appear in xinput");
+
+	QCommandLineOption skipLinearCalibration("skip-linear", "Skip the linear part of the calibration");
+	parser.addOption(skipLinearCalibration);
+
+	//QCommandLineOption checkResult("check-result", "Check the result at the end");
+	//parser.addOption(checkResult);
+
+	parser.process(app);
+	QString device = parser.positionalArguments().value(0, "");
+
+	if (device.isEmpty()) {
+		cout << "No device given in argument" << endl;
+	}
+
+	QVector<int> area;
+	if (!device.isEmpty()) {
+		QString command = QString(
+					"xinput set-float-prop \"%1\" \"Wacom Border Distortion\" "
+					"0 0 0 0 1 0   0 0 0 0 1 0   0 0 0 0 1 0   0 0 0 0 1 0").arg(device);
+		cout << "> " << command << endl;
+		int r = QProcess::execute(command);
+		if (r != 0) {
+			cout << "Error, cannot set the distortion parameters to identity. It will quit." << endl;
+			return 1;
+		}
+
+		area = readTabletArea(device);
+		if (area.isEmpty())	{
+			cout << "Error, cannot read Wacom Tablet Area parameter. It will quit." << endl;
+			return 1;
+		}
+	} else {
+		cout << "Considere Wacom Tablet Area to be 0 0 10000 10000" << endl;
+		area << 0 << 0 << 10000 << 10000;
+	}
+
+	CalibrationDialog w;
+
+	if (!parser.isSet(skipLinearCalibration)) {
+		int r = linearCalibration(device, &w, area);
+		if (r != 0) {
+			cout << "Quit..." << endl;
+			return 1;
+		}
+		w.clearAll();
+	}
+
+	w.setText("With a ruler make a curve for each border.\n"
+			  "The lines determines which part of the border must be corrected.\n"
+			  "Only the last curve for each border will be taken in account.\n"
+			  "The [F] key switches the window in fullscreen mode.\n"
+			  "You can remove the last cruve with [backspace].\n"
+			  "The [delete] key resets all.\n"
+			  "Please press [enter] when you are finished.");
+	w.setBorders(true);
+	w.setLineMode(true);
+
+	if (w.exec() == QDialog::Accepted) {
+		QVector<double> values = borderCalibration(&w);
+
+		QString command = "xinput set-float-prop ";
+		command += device.isEmpty() ? "<device>" : "\""+device+"\"";
+		command += " \"Wacom Border Distortion\"";
+		for (int i = 0; i < values.size(); ++i) command += QString(" %1").arg(values[i]);
+
+		if (device.isEmpty()) {
+			cout << "You have to execute :\n" << command << endl;
+		} else {
+			cout << "> " << command << endl;
+			int r = QProcess::execute(command);
+			if (r != 0) {
+				cout << "Error, cannot set Wacom Border Distortion parameters. Quit..." << endl;
+				return 1;
+			}
+		}
+	} else {
+		cout << "Distortion calibration skipped" << endl;
+	}
+
+	if (true/*parser.isSet(checkResult)*/) {
+		w.setText("Now you can test the result.");
+		w.setBorders(false);
+		w.clearAll();
+		w.exec();
+	}
+
+	cout << "Finish successfully" << endl;
+	return 0;
+}
+
 QVector<int> readTabletArea(const QString& device)
 {
 	// run commande xinput list-props <device>
@@ -189,6 +192,8 @@ QVector<int> readTabletArea(const QString& device)
 	p.setArguments(QStringList() << "list-props" << device);
 	p.start();
 	p.waitForFinished();
+
+	cout << QString("> xinput list-props \"%1\"").arg(device) << endl;
 
 	qDebug("xinput return %d", p.exitCode());
 
@@ -213,103 +218,17 @@ QVector<int> readTabletArea(const QString& device)
 	return values;
 }
 
-QVector<double> find_polynomial(double d, QVector<double> raw, QVector<double> phy)
-{
-	QVector<double> a, arhs;
-	a.reserve(4 * raw.size());
-	arhs.reserve(raw.size());
-
-	for (int i = 0; i < raw.size(); ++i) {
-		a << pow(raw[i], 3.) << pow(raw[i], 2.) << raw[i] << 1.0;
-		arhs << phy[i];
-	}
-
-	const double constraints[4] = {
-		pow(d, 3), pow(d, 2), d, 1
-	};
-	const double crhs[1] = {
-		d
-	};
-	QVector<double> poly;
-	poly.resize(4);
-
-	int r = least_squares_constraint(4, arhs.size(), 1, a.data(), arhs.data(), constraints, crhs, poly.data());
-	if (r != 0) poly.resize(0);
-	return poly;
-}
-
 QVector<double> borderCalibration(CalibrationDialog* w)
 {
 	QVector<double> values;
 	for (int i = 0; i < 4; ++i) {
-		values << 0.0 << 0.0 << 0.0 << 1.0 << 0.0;
+		values << 0.0 << 0.0 << 0.0 << 0.0 << 1.0 << 0.0;
 	}
 
-	if (w->getBorderTopX() > 0) {
-		QVector<double> raw, phy;
-		for (int i = 0; i < w->getRawPoints().size(); ++i) {
-			if (w->getRawPoints()[i].x() < w->getBorderTopX()) {
-				raw << w->getRawPoints()[i].x()      / w->getScreenWidth();
-				phy << w->getPhysicalPoints()[i].x() / w->getScreenWidth();
-			}
-		}
-		double d = w->getBorderTopX() / w->getScreenWidth();
-		QVector<double> poly = find_polynomial(d, raw, phy);
-
-		if (poly.size() == 4) {
-			values[0] = d;
-			for (int i = 0; i < 4; ++i) values[1+i] = poly[i];
-		}
-	}
-
-	if (w->getBorderTopY() > 0) {
-		QVector<double> raw, phy;
-		for (int i = 0; i < w->getRawPoints().size(); ++i) {
-			if (w->getRawPoints()[i].y() < w->getBorderTopY()) {
-				raw << w->getRawPoints()[i].y() / w->getScreenHeight();
-				phy << w->getPhysicalPoints()[i].y() / w->getScreenHeight();
-			}
-		}
-		double d = w->getBorderTopY() / w->getScreenHeight();
-		QVector<double> poly = find_polynomial(d, raw, phy);
-
-		if (poly.size() == 4) {
-			values[5] = d;
-			for (int i = 0; i < 4; ++i) values[6+i] = poly[i];
-		}
-	}
-
-	if (w->getBorderBottomX() > 0) {
-		QVector<double> raw, phy;
-		for (int i = 0; i < w->getRawPoints().size(); ++i) {
-			if (w->getRawPoints()[i].x() > w->getBorderBottomX()) {
-				raw << 1.0 - w->getRawPoints()[i].x() / w->getScreenWidth();
-				phy << 1.0 - w->getPhysicalPoints()[i].x() / w->getScreenWidth();
-			}
-		}
-		double d = 1.0 - w->getBorderBottomX() / w->getScreenWidth();
-		QVector<double> poly = find_polynomial(d, raw, phy);
-
-		if (poly.size() == 4) {
-			values[10] = d;
-			for (int i = 0; i < 4; ++i) values[11+i] = poly[i];
-		}
-	}
-
-	if (w->getBorderBottomY() > 0) {
-		QVector<double> raw, phy;
-		for (int i = 0; i < w->getRawPoints().size(); ++i) {
-			if (w->getRawPoints()[i].y() > w->getBorderBottomY()) {
-				raw << 1.0 - w->getRawPoints()[i].y() / w->getScreenHeight();
-				phy << 1.0 - w->getPhysicalPoints()[i].y() / w->getScreenHeight();
-			}
-		}
-		double d = 1.0 - w->getBorderBottomY() / w->getScreenHeight();
-		QVector<double> poly = find_polynomial(d, raw, phy);
-
-		if (poly.size() == 4) {
-			values[15] = d;
-			for (int i = 0; i < 4; ++i) values[16+i] = poly[i];
+	for (int border = 0; border < 4; ++border) {
+		values[6 * border] = w->getBorderLimit(border) / w->getScreenWH(border);
+		for (int i = 0; i < 5; ++ i) {
+			values[6 * border + i + 1] = w->getPolyCoeff(border, i);
 		}
 	}
 
