@@ -457,8 +457,12 @@ void CalibrationDialog::fitCurves()
 					arhs << phy_x;
 				}
 			}
-			least_squares(arhs.size(), 5, a.data(), arhs.data(), c.poly);
+			double d = m_borders[TopX].pos / m_w;
+			double cons[5] = { 4.0 * d*d*d, 3.0 * d*d, 2.0 * d, 1, 0 };
+			double crhs = 1.0;
+			least_squares_constraint(arhs.size(), 5, 1, a.data(), arhs.data(), cons, &crhs, c.poly);
 		}
+		//========================================
 		if (c.border == TopY) {
 			QVector<double> a, arhs;
 			for (int j = 0; j < c.pts.size(); ++j) {
@@ -480,8 +484,12 @@ void CalibrationDialog::fitCurves()
 					arhs << phy_y;
 				}
 			}
-			least_squares(arhs.size(), 5, a.data(), arhs.data(), c.poly);
+			double d = m_borders[TopY].pos / m_h;
+			double cons[5] = { 4.0 * d*d*d, 3.0 * d*d, 2.0 * d, 1, 0 };
+			double crhs = 1.0;
+			least_squares_constraint(arhs.size(), 5, 1, a.data(), arhs.data(), cons, &crhs, c.poly);
 		}
+		//========================================
 		if (c.border == BottomX) {
 			QVector<double> a, arhs;
 			for (int j = 0; j < c.pts.size(); ++j) {
@@ -503,8 +511,12 @@ void CalibrationDialog::fitCurves()
 					arhs << phy_x;
 				}
 			}
-			least_squares(arhs.size(), 5, a.data(), arhs.data(), c.poly);
+			double d = 1.0 - m_borders[BottomX].pos / m_w;
+			double cons[5] = { 4.0 * d*d*d, 3.0 * d*d, 2.0 * d, 1, 0 };
+			double crhs = 1.0;
+			least_squares_constraint(arhs.size(), 5, 1, a.data(), arhs.data(), cons, &crhs, c.poly);
 		}
+		//========================================
 		if (c.border == BottomY) {
 			QVector<double> a, arhs;
 			for (int j = 0; j < c.pts.size(); ++j) {
@@ -526,7 +538,10 @@ void CalibrationDialog::fitCurves()
 					arhs << phy_y;
 				}
 			}
-			least_squares(arhs.size(), 5, a.data(), arhs.data(), c.poly);
+			double d = 1.0 - m_borders[BottomY].pos / m_h;
+			double cons[5] = { 4.0 * d*d*d, 3.0 * d*d, 2.0 * d, 1, 0 };
+			double crhs = 1.0;
+			least_squares_constraint(arhs.size(), 5, 1, a.data(), arhs.data(), cons, &crhs, c.poly);
 		}
 	}
 }
