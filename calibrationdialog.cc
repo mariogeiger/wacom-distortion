@@ -100,6 +100,7 @@ void CalibrationDialog::mousePressEvent(QMouseEvent* event)
 	if (m_lineMode) {
 		if (event->buttons() & Qt::LeftButton) {
 			Curve c;
+			c.border = -1;
 			c.pts.append(event->globalPos());
 			m_curves.append(c);
 		}
@@ -223,103 +224,36 @@ void CalibrationDialog::paintEvent(QPaintEvent*)
 		painter.setPen(Qt::black);
 		painter.drawPath(path_curve);
 
-		if (m_show_borders && c.border == TopX) {
+		if (m_show_borders && c.border != -1) {
 			painter.setPen(Qt::blue);
 
-			double y1 = path_curve.boundingRect().top();
-			double x1 = (c.ab[0] * y1 + c.ab[1]) * m_w;
-			double y2 = path_curve.boundingRect().bottom();
-			double x2 = (c.ab[0] * y2 + c.ab[1]) * m_w;
-			painter.drawLine(x1, y1, x2, y2);
-
-			QPainterPath path_corrected;
-			for (int j = 0; j < c.pts.size(); ++j) {
-				if (c.pts[j].x() < m_borders[TopX].pos) {
-					double raw = c.pts[j].x() / m_w;
-					double phy = polynomial_evaluate(5, c.poly, raw);
-					double x = phy*m_w;
-					double y = c.pts[j].y();
-					if (path_corrected.elementCount() == 0)
-						path_corrected.moveTo(x, y);
-					else
-						path_corrected.lineTo(x, y);
-				}
+			double x1, y1, x2, y2;
+			if (c.border % 2 == 0) {
+				y1 = path_curve.boundingRect().top();
+				x1 = unitToPixel(c.border, c.ab[0] * y1 + c.ab[1]);
+				y2 = path_curve.boundingRect().bottom();
+				x2 = unitToPixel(c.border, c.ab[0] * y2 + c.ab[1]);
+			} else {
+				x1 = path_curve.boundingRect().left();
+				y1 = unitToPixel(c.border, c.ab[0] * x1 + c.ab[1]);
+				x2 = path_curve.boundingRect().right();
+				y2 = unitToPixel(c.border, c.ab[0] * x2 + c.ab[1]);
 			}
-
-			painter.setPen(Qt::red);
-			painter.drawPath(path_corrected);
-		}
-
-		if (m_show_borders && c.border == TopY) {
-			painter.setPen(Qt::blue);
-
-			double x1 = path_curve.boundingRect().left();
-			double y1 = (c.ab[0] * x1 + c.ab[1]) * m_h;
-			double x2 = path_curve.boundingRect().right();
-			double y2 = (c.ab[0] * x2 + c.ab[1]) * m_h;
 			painter.drawLine(x1, y1, x2, y2);
 
 			QPainterPath path_corrected;
 			for (int j = 0; j < c.pts.size(); ++j) {
-				if (c.pts[j].y() < m_borders[TopY].pos) {
-					double raw = c.pts[j].y() / m_h;
+				if (isInBorder(c.border, c.pts[j])) {
+					double raw = pixelToUnit(c.border, xy(c.border, c.pts[j]));
 					double phy = polynomial_evaluate(5, c.poly, raw);
-					double x = c.pts[j].x();
-					double y = phy * m_h;
-					if (path_corrected.elementCount() == 0)
-						path_corrected.moveTo(x, y);
-					else
-						path_corrected.lineTo(x, y);
-				}
-			}
-
-			painter.setPen(Qt::red);
-			painter.drawPath(path_corrected);
-		}
-
-		if (m_show_borders && c.border == BottomX) {
-			painter.setPen(Qt::blue);
-
-			double y1 = path_curve.boundingRect().top();
-			double x1 = (1.0 - c.ab[0] * y1 - c.ab[1]) * m_w;
-			double y2 = path_curve.boundingRect().bottom();
-			double x2 = (1.0 - c.ab[0] * y2 - c.ab[1]) * m_w;
-			painter.drawLine(x1, y1, x2, y2);
-
-			QPainterPath path_corrected;
-			for (int j = 0; j < c.pts.size(); ++j) {
-				if (c.pts[j].x() > m_borders[BottomX].pos) {
-					double raw = 1.0 - c.pts[j].x() / m_w;
-					double phy = polynomial_evaluate(5, c.poly, raw);
-					double x = (1.0 - phy) * m_w;
-					double y = c.pts[j].y();
-					if (path_corrected.elementCount() == 0)
-						path_corrected.moveTo(x, y);
-					else
-						path_corrected.lineTo(x, y);
-				}
-			}
-
-			painter.setPen(Qt::red);
-			painter.drawPath(path_corrected);
-		}
-
-		if (m_show_borders && c.border == BottomY) {
-			painter.setPen(Qt::blue);
-
-			double x1 = path_curve.boundingRect().left();
-			double y1 = (1.0 - c.ab[0] * x1 - c.ab[1]) * m_h;
-			double x2 = path_curve.boundingRect().right();
-			double y2 = (1.0 - c.ab[0] * x2 - c.ab[1]) * m_h;
-			painter.drawLine(x1, y1, x2, y2);
-
-			QPainterPath path_corrected;
-			for (int j = 0; j < c.pts.size(); ++j) {
-				if (c.pts[j].y() > m_borders[BottomY].pos) {
-					double raw = 1.0 - c.pts[j].y() / m_h;
-					double phy = polynomial_evaluate(5, c.poly, raw);
-					double x = c.pts[j].x();
-					double y = (1.0 - phy) * m_h;
+					double x, y;
+					if (c.border % 2 == 0) {
+						x = unitToPixel(c.border, phy);
+						y = c.pts[j].y();
+					} else {
+						x = c.pts[j].x();
+						y = unitToPixel(c.border, phy);
+					}
 					if (path_corrected.elementCount() == 0)
 						path_corrected.moveTo(x, y);
 					else
@@ -436,112 +370,37 @@ void CalibrationDialog::fitCurves()
 			}
 		}
 
-		if (c.border == TopX) {
+		if (c.border != -1) {
 			QVector<double> a, arhs;
 			for (int j = 0; j < c.pts.size(); ++j) {
-				if (c.pts[j].x() > m_borders[TopX].pos) {
-					double phy_x = c.pts[j].x() / m_w;
-					a << c.pts[j].y() << 1.0;
-					arhs << phy_x;
+				if (!isInBorder(c.border, c.pts[j])) {
+					a << yx(c.border, c.pts[j]) << 1.0;
+					arhs << pixelToUnit(c.border, xy(c.border, c.pts[j])); // phy
 				}
 			}
-			least_squares(arhs.size(), 2, a.data(), arhs.data(), c.ab);
+			if (arhs.isEmpty()) {
+				c.border = -1;
+			} else {
+				least_squares(arhs.size(), 2, a.data(), arhs.data(), c.ab);
 
-			a.clear();
-			arhs.clear();
-			for (int j = 0; j < c.pts.size(); ++j) {
-				if (c.pts[j].x() < m_borders[TopX].pos) {
-					double raw_x = c.pts[j].x() / m_w;
-					double phy_x = c.ab[0]*c.pts[j].y() + c.ab[1];
-					a << pow(raw_x, 4.) << pow(raw_x, 3.) << pow(raw_x, 2.) << raw_x << 1.0;
-					arhs << phy_x;
+				a.clear();
+				arhs.clear();
+				for (int j = 0; j < c.pts.size(); ++j) {
+					if (isInBorder(c.border, c.pts[j])) {
+						double raw = pixelToUnit(c.border, xy(c.border, c.pts[j]));
+						double phy = c.ab[0]*yx(c.border, c.pts[j]) + c.ab[1];
+						a << pow(raw, 4.) << pow(raw, 3.) << pow(raw, 2.) << raw << 1.0;
+						arhs << phy;
+					}
 				}
+				double d = pixelToUnit(c.border, m_borders[c.border].pos);
+				double cons[10] = {
+					4.*d*d*d,      3.*d*d,      2.*d,      1.0,   0.0,
+					d*d*d*d,       d*d*d,       d*d,       d,     1.0
+				};
+				double crhs[2] = {1.0, d};
+				least_squares_constraint(arhs.size(), 5, 2, a.data(), arhs.data(), cons, crhs, c.poly);
 			}
-			double d = m_borders[TopX].pos / m_w;
-			double cons[5] = { 4.0 * d*d*d, 3.0 * d*d, 2.0 * d, 1, 0 };
-			double crhs = 1.0;
-			least_squares_constraint(arhs.size(), 5, 1, a.data(), arhs.data(), cons, &crhs, c.poly);
-		}
-		//========================================
-		if (c.border == TopY) {
-			QVector<double> a, arhs;
-			for (int j = 0; j < c.pts.size(); ++j) {
-				if (c.pts[j].y() > m_borders[TopY].pos) {
-					double phy_y = c.pts[j].y() / m_h;
-					a << c.pts[j].x() << 1.0;
-					arhs << phy_y;
-				}
-			}
-			least_squares(arhs.size(), 2, a.data(), arhs.data(), c.ab);
-
-			a.clear();
-			arhs.clear();
-			for (int j = 0; j < c.pts.size(); ++j) {
-				if (c.pts[j].y() < m_borders[TopY].pos) {
-					double raw_y = c.pts[j].y() / m_h;
-					double phy_y = c.ab[0]*c.pts[j].x() + c.ab[1];
-					a << pow(raw_y, 4.) << pow(raw_y, 3.) << pow(raw_y, 2.) << raw_y << 1.0;
-					arhs << phy_y;
-				}
-			}
-			double d = m_borders[TopY].pos / m_h;
-			double cons[5] = { 4.0 * d*d*d, 3.0 * d*d, 2.0 * d, 1, 0 };
-			double crhs = 1.0;
-			least_squares_constraint(arhs.size(), 5, 1, a.data(), arhs.data(), cons, &crhs, c.poly);
-		}
-		//========================================
-		if (c.border == BottomX) {
-			QVector<double> a, arhs;
-			for (int j = 0; j < c.pts.size(); ++j) {
-				if (c.pts[j].x() < m_borders[BottomX].pos) {
-					double phy_x = 1.0 - c.pts[j].x() / m_w;
-					a << c.pts[j].y() << 1.0;
-					arhs << phy_x;
-				}
-			}
-			least_squares(arhs.size(), 2, a.data(), arhs.data(), c.ab);
-
-			a.clear();
-			arhs.clear();
-			for (int j = 0; j < c.pts.size(); ++j) {
-				if (c.pts[j].x() > m_borders[BottomX].pos) {
-					double raw_x = 1.0 - c.pts[j].x() / m_w;
-					double phy_x = c.ab[0]*c.pts[j].y() + c.ab[1];
-					a << pow(raw_x, 4.) << pow(raw_x, 3.) << pow(raw_x, 2.) << raw_x << 1.0;
-					arhs << phy_x;
-				}
-			}
-			double d = 1.0 - m_borders[BottomX].pos / m_w;
-			double cons[5] = { 4.0 * d*d*d, 3.0 * d*d, 2.0 * d, 1, 0 };
-			double crhs = 1.0;
-			least_squares_constraint(arhs.size(), 5, 1, a.data(), arhs.data(), cons, &crhs, c.poly);
-		}
-		//========================================
-		if (c.border == BottomY) {
-			QVector<double> a, arhs;
-			for (int j = 0; j < c.pts.size(); ++j) {
-				if (c.pts[j].y() < m_borders[BottomY].pos) {
-					double phy_y = 1.0 - c.pts[j].y() / m_h;
-					a << c.pts[j].x() << 1.0;
-					arhs << phy_y;
-				}
-			}
-			least_squares(arhs.size(), 2, a.data(), arhs.data(), c.ab);
-
-			a.clear();
-			arhs.clear();
-			for (int j = 0; j < c.pts.size(); ++j) {
-				if (c.pts[j].y() > m_borders[BottomY].pos) {
-					double raw_y = 1.0 - c.pts[j].y() / m_h;
-					double phy_y = c.ab[0]*c.pts[j].x() + c.ab[1];
-					a << pow(raw_y, 4.) << pow(raw_y, 3.) << pow(raw_y, 2.) << raw_y << 1.0;
-					arhs << phy_y;
-				}
-			}
-			double d = 1.0 - m_borders[BottomY].pos / m_h;
-			double cons[5] = { 4.0 * d*d*d, 3.0 * d*d, 2.0 * d, 1, 0 };
-			double crhs = 1.0;
-			least_squares_constraint(arhs.size(), 5, 1, a.data(), arhs.data(), cons, &crhs, c.poly);
 		}
 	}
 }

@@ -229,9 +229,9 @@ QVector<double> borderCalibration(CalibrationDialog* w)
 
 	for (int border = 0; border < 4; ++border) {
 		if (border < 2)
-			values[6 * border] = w->getBorderLimit(border) / w->getScreenWH(border);
+			values[6 * border] = w->getBorderLimit(border) / w->wh(border);
 		else
-			values[6 * border] = 1.0 - w->getBorderLimit(border) / w->getScreenWH(border);
+			values[6 * border] = 1.0 - w->getBorderLimit(border) / w->wh(border);
 
 		for (int i = 0; i < 5; ++ i) {
 			values[6 * border + i + 1] = w->getPolyCoeff(border, i);

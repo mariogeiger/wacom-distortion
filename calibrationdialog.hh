@@ -61,8 +61,9 @@ public:
 	inline const QVector<QPointF>& getRawPoints() const {
 		return m_raw_points;
 	}
-	double getBorderLimit(int border) const { return m_borders[border].pos; }
-	double getScreenWH(int border) const { return border % 2 == 0 ? m_w : m_h; }
+	inline double getBorderLimit(int border) const {
+		return m_borders[border].pos;
+	}
 	double getPolyCoeff(int border, int i) const;
 	double getScreenWidth() const { return m_w; }
 	double getScreenHeight() const { return m_h; }
@@ -70,6 +71,28 @@ public:
 	void setText(const QString& text) { m_text = text; }
 	void setLineMode(bool on) { m_lineMode = on; }
 	void clearAll();
+
+	inline double wh(int border) const {
+		return border % 2 == 0 ? m_w : m_h;
+	}
+	inline double xy(int border, const QPointF& point) const {
+		return border % 2 == 0 ? point.x() : point.y();
+	}
+	inline double yx(int border, const QPointF& point) const {
+		return border % 2 == 0 ? point.y() : point.x();
+	}
+	bool isInBorder(int border, const QPointF& point) const {
+		return (border < 2) ? xy(border, point) < m_borders[border].pos
+							: xy(border, point) > m_borders[border].pos;
+	}
+	double pixelToUnit(int border, double pixel) const {
+		return (border < 2) ? pixel / wh(border)
+							: 1.0 - pixel / wh(border);
+	}
+	double unitToPixel(int border, double unit) const {
+		return (border < 2) ? unit * wh(border)
+							: (1.0 - unit) * wh(border);
+	}
 
 private:
 	virtual void tabletEvent(QTabletEvent* event);
