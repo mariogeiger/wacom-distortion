@@ -1,18 +1,7 @@
-#ifndef CALIBRATIONDIALOG_HH
-#define CALIBRATIONDIALOG_HH
+#ifndef CALIBRATIONWIDGET_H
+#define CALIBRATIONWIDGET_H
 
 #include <QWidget>
-#include <QDialog>
-#include <QTabletEvent>
-#include <QMouseEvent>
-#include <QPaintEvent>
-#include <QCloseEvent>
-#include <QKeyEvent>
-#include <QMoveEvent>
-#include <QShowEvent>
-#include <QPoint>
-#include <QPointF>
-#include <QTimer>
 
 /*         Top Y
  *    +--------------+
@@ -31,7 +20,7 @@
  *     |                      |      |<-- Screen border
  *     |                      |      |
  *     |                      |      |
- *     |    Axis of unit      |      |
+ *     |    Axis of Unit      |      |
  * <---1----------------------|------0
  *     |                      |      |
  *     +-----------------------------+
@@ -40,11 +29,13 @@
  *
  */
 
-class CalibrationDialog : public QDialog
+class CalibrationWidget : public QWidget
 {
 	Q_OBJECT
-
 public:
+	explicit CalibrationWidget(const QString& dev, QWidget *parent = 0);
+	~CalibrationWidget();
+
 	enum Border {
 		TopX = 0,
 		TopY = 1,
@@ -52,25 +43,19 @@ public:
 		BottomY = 3
 	};
 
-	CalibrationDialog(QWidget *parent = 0);
-	~CalibrationDialog();
+	inline void setDevice(const QString& dev) { m_device = dev; }
 
-	inline const QVector<QPointF>& getPhysicalPoints() const {
-		return m_phy_points;
-	}
-	inline const QVector<QPointF>& getRawPoints() const {
-		return m_raw_points;
-	}
-	inline double getBorderLimit(int border) const {
-		return m_borders[border].pos;
-	}
-	double getPolyCoeff(int border, int i) const;
-	double getScreenWidth() const { return m_w; }
-	double getScreenHeight() const { return m_h; }
-	void setBorders(bool on) { m_show_borders = on; }
-	void setText(const QString& text) { m_text = text; }
-	void setLineMode(bool on) { m_lineMode = on; }
+private:
+	virtual void mousePressEvent(QMouseEvent* event);
+	virtual void mouseMoveEvent(QMouseEvent* event);
+	virtual void mouseReleaseEvent(QMouseEvent* event);
+	virtual void paintEvent(QPaintEvent* event);
+	virtual void keyPressEvent(QKeyEvent* event);
+
+
+	void fitCurves();
 	void clearAll();
+	void nextStep();
 
 	inline double wh(int border) const {
 		return border % 2 == 0 ? m_w : m_h;
@@ -82,8 +67,8 @@ public:
 		return border % 2 == 0 ? point.y() : point.x();
 	}
 	bool isInBorder(int border, const QPointF& point) const {
-		return (border < 2) ? xy(border, point) < m_borders[border].pos
-							: xy(border, point) > m_borders[border].pos;
+		return (border < 2) ? xy(border, point) < m_borderLimits[border].pos
+							: xy(border, point) > m_borderLimits[border].pos;
 	}
 	double pixelToUnit(int border, double pixel) const {
 		return (border < 2) ? pixel / wh(border)
@@ -94,28 +79,12 @@ public:
 							: (1.0 - unit) * wh(border);
 	}
 
-private:
-	virtual void tabletEvent(QTabletEvent* event);
-	virtual void mousePressEvent(QMouseEvent* event);
-	virtual void mouseMoveEvent(QMouseEvent* event);
-	virtual void mouseReleaseEvent(QMouseEvent* event);
-	virtual void paintEvent(QPaintEvent* event);
-	virtual void closeEvent(QCloseEvent* event);
-	virtual void keyPressEvent(QKeyEvent* event);
-	virtual void moveEvent(QMoveEvent* event);
-	virtual void showEvent(QShowEvent* event);
-
-	void add_point(const QPointF& point);
-	void fitCurves();
-
 	double m_w, m_h;
 
 	QVector<QPointF> m_phy_points;
 	QVector<QPointF> m_raw_points;
-	bool m_show_borders;
+	bool m_borliMode;
 	QString m_text;
-
-	QPointF m_tabletGlobalPosF;
 
 	struct BorderLimit {
 		double pos;
@@ -125,9 +94,9 @@ private:
 
 		void paint(QPainter* p, double w, double h);
 		void move(double new_pos);
-	} m_borders[4];
+	} m_borderLimits[4];
 
-	bool m_lineMode;
+	bool m_curveMode;
 	struct Curve {
 		QList<QPointF> pts;
 		int border;
@@ -138,6 +107,10 @@ private:
 	};
 
 	QList<Curve> m_curves;
+
+	QVector<double> m_area;
+	QString m_device;
+	int m_state;
 };
 
-#endif // CALIBRATIONDIALOG_HH
+#endif // CALIBRATIONWIDGET_H

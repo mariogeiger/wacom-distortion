@@ -15,11 +15,11 @@ TEMPLATE = app
 
 SOURCES += main.cc\
     lmath.c \
-    calibrationdialog.cc
+    calibrationwidget.cpp
 
 HEADERS  += \
     lmath.h \
-    calibrationdialog.hh
+    calibrationwidget.h
 
 DISTFILES += \
     README.md
