@@ -199,6 +199,7 @@ void CalibrationWidget::paintEvent(QPaintEvent* event)
 		painter.drawEllipse(r);
 	}
 
+	painter.setRenderHint(QPainter::Antialiasing, false);
 	for (int i = 0; i < m_curves.size(); ++i) {
 		const Curve& c = m_curves[i];
 		if (c.pts.isEmpty()) continue;
@@ -213,7 +214,6 @@ void CalibrationWidget::paintEvent(QPaintEvent* event)
 
 		if (m_borliMode && c.border != -1) {
 			painter.setPen(Qt::blue);
-			painter.setRenderHint(QPainter::Antialiasing, false);
 
 			double x1, y1, x2, y2;
 			if (c.border % 2 == 0) {
@@ -255,6 +255,7 @@ void CalibrationWidget::paintEvent(QPaintEvent* event)
 	}
 
 	if (m_drawRuler) {
+		painter.setRenderHint(QPainter::Antialiasing, true);
 		int dx = 10;
 		painter.translate(m_w-26*dx, 0.5*m_h);
 		painter.rotate(-20);
