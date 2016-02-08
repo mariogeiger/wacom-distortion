@@ -6,6 +6,7 @@
 #include <QMessageBox>
 #include <QProcess>
 #include <QTextStream>
+#include <QInputDialog>
 
 extern "C" {
 #include "lmath.h"
@@ -381,8 +382,22 @@ void CalibrationWidget::nextStep()
 			if (pro.exitCode() != 0) {
 				cout << "You need to install xinput (sudo apt-get install xinput)" << endl;
 			} else {
-				cout << "\nThis is the list of your devices :\n" << pro.readAllStandardOutput();
-				cout << "Execute this programm with the stylus device in argument\n" << endl;
+				QStringList devices;
+				QByteArray out = pro.readAllStandardOutput();
+				int end_pos = out.indexOf("id=");
+				while (end_pos != -1) {
+					int beg_pos = end_pos;
+					char c = out[beg_pos];
+					while (isspace(c) || isalnum(c)) c = out[--beg_pos];
+					beg_pos++;
+
+					devices << out.mid(beg_pos, end_pos-beg_pos).trimmed();
+					end_pos = out.indexOf("id=", end_pos+1);
+				}
+				m_device = QInputDialog::getItem(this, "Select device", "Select your stylus device from the list.", devices, 0, false);
+
+				nextStep();
+				return;
 			}
 		}
 
