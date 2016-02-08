@@ -364,19 +364,26 @@ void fix_area(double slope, double offset, double range, double old_min, double 
 void CalibrationWidget::nextStep()
 {
 	QTextStream cout(stdout);
+	QString command;
+	QProcess pro;
 
 	if (m_state == 0) {
-		QString command;
-		QProcess pro;
-		int r;
-
 		// distortion to identity
 		command = "xinput set-float-prop \"%1\" \"Wacom Border Distortion\" 0 0 0 0 1 0   0 0 0 0 1 0   0 0 0 0 1 0   0 0 0 0 1 0";
 		command = command.arg(m_device);
 		cout << "> " << command << endl;
-		r = QProcess::execute(command);
-		if (r != 0) {
-			cout << "Error, cannot set the distortion parameters to identity." << endl;
+		pro.start(command); pro.waitForFinished();
+		cout << pro.readAllStandardOutput();
+		cout << pro.readAllStandardError();
+
+		if (pro.exitCode() != 0) {
+			pro.start("xinput"); pro.waitForFinished();
+			if (pro.exitCode() != 0) {
+				cout << "You need to install xinput (sudo apt-get install xinput)" << endl;
+			} else {
+				cout << "\nThis is the list of your devices :\n" << pro.readAllStandardOutput();
+				cout << "Execute this programm with the stylus device in argument\n" << endl;
+			}
 		}
 
 		// get area
@@ -385,10 +392,11 @@ void CalibrationWidget::nextStep()
 		cout << "> " << command << endl;
 		pro.start(command);
 		pro.waitForFinished();
-		r = pro.exitCode();
+		cout << pro.readAllStandardOutput();
+		cout << pro.readAllStandardError();
 
 		m_area.clear();
-		if (r == 0) {
+		if (pro.exitCode() == 0) {
 			QByteArray output = pro.readAllStandardOutput();
 			int pos = output.indexOf("Wacom Tablet Area");
 			if (pos != -1) {
@@ -411,7 +419,7 @@ void CalibrationWidget::nextStep()
 			}
 		}
 		if (m_area.isEmpty()) {
-			cout << "Error when reading area infos" << endl;
+			cout << "Assume that Wacom Tablet Area is 0 0 10000 10000" << endl;
 			m_area << 0 << 0 << 10000 << 10000;
 		}
 
@@ -451,13 +459,12 @@ void CalibrationWidget::nextStep()
 		// phy = res[0] * raw + res[1]
 		fix_area(res[0], res[1], m_h, m_area[1], m_area[3], new_area[1], new_area[3]);
 
-		QString command = "xinput set-int-prop \"%1\" \"Wacom Tablet Area\" 32 %2 %3 %4 %5";
+		command = "xinput set-int-prop \"%1\" \"Wacom Tablet Area\" 32 %2 %3 %4 %5";
 		command = command.arg(m_device).arg(new_area[0]).arg(new_area[1]).arg(new_area[2]).arg(new_area[3]);
 		cout << "> " << command << endl;
-		r = QProcess::execute(command);
-		if (r != 0) {
-			cout << "Error when set the Wacom Tablet Area parameters" << endl;
-		}
+		pro.start(command); pro.waitForFinished();
+		cout << pro.readAllStandardOutput();
+		cout << pro.readAllStandardError();
 
 		m_borliMode = true;
 		m_curveMode = true;
@@ -484,14 +491,13 @@ void CalibrationWidget::nextStep()
 			}
 		}
 
-		QString command = "xinput set-float-prop \"%1\" \"Wacom Border Distortion\"";
+		command = "xinput set-float-prop \"%1\" \"Wacom Border Distortion\"";
 		command = command.arg(m_device);
 		for (int i = 0; i < values.size(); ++i) command += QString(" %1").arg(values[i]);
 		cout << "> " << command << endl;
-		int r = QProcess::execute(command);
-		if (r != 0) {
-			cout << "Error when set the Wacom Border Distortion parameters" << endl;
-		}
+		pro.start(command); pro.waitForFinished();
+		cout << pro.readAllStandardOutput();
+		cout << pro.readAllStandardError();
 
 		m_state = 3;
 		m_borliMode = false;
