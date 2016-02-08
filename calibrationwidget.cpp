@@ -198,6 +198,7 @@ void CalibrationWidget::paintEvent(QPaintEvent* event)
 
 		if (m_borliMode && c.border != -1) {
 			painter.setPen(Qt::blue);
+			painter.setRenderHint(QPainter::Antialiasing, false);
 
 			double x1, y1, x2, y2;
 			if (c.border % 2 == 0) {
