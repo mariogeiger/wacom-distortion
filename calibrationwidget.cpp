@@ -394,10 +394,14 @@ void CalibrationWidget::nextStep()
 					devices << out.mid(beg_pos, end_pos-beg_pos).trimmed();
 					end_pos = out.indexOf("id=", end_pos+1);
 				}
-				m_device = QInputDialog::getItem(this, "Select device", "Select your stylus device from the list.", devices, 0, false);
+				bool ok;
+				QString selectedDevice = QInputDialog::getItem(this, "Select device", "Select your stylus device from the list.", devices, 0, false, &ok);
 
-				nextStep();
-				return;
+				if (ok) {
+					m_device = selectedDevice;
+					nextStep();
+					return;
+				}
 			}
 		}
 
