@@ -28,6 +28,9 @@ CalibrationWidget::CalibrationWidget(const QString& dev, QWidget *parent) : QWid
 	m_curveMode = false;
 	m_state = 0;
 
+	QPalette pal = palette();
+	pal.setColor(QPalette::Window, Qt::white);
+	setPalette(pal);
 	setCursor(QCursor(Qt::CrossCursor));
 	setMouseTracking(true);
 	setWindowState(windowState() | Qt::WindowFullScreen);
@@ -427,7 +430,7 @@ void CalibrationWidget::nextStep()
 		double res[2];
 		int r = least_squares(arhs.size(), 2, a.data(), arhs.data(), res);
 		if (r != 0) {
-			m_text = "More points please";
+			m_text = "Please, add more points or quit with Escape";
 			update();
 			return;
 		}
