@@ -79,11 +79,14 @@ private:
 							: (1.0 - unit) * wh(border);
 	}
 
+	bool m_curveMode;
+	bool m_borliMode;
+	bool m_drawRuler;
+
 	double m_w, m_h;
 
 	QVector<QPointF> m_phy_points;
 	QVector<QPointF> m_raw_points;
-	bool m_borliMode;
 	QString m_text;
 
 	struct BorderLimit {
@@ -96,7 +99,6 @@ private:
 		void move(double new_pos);
 	} m_borderLimits[4];
 
-	bool m_curveMode;
 	struct Curve {
 		QList<QPointF> pts;
 		int border;

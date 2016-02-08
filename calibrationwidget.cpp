@@ -27,6 +27,7 @@ CalibrationWidget::CalibrationWidget(const QString& dev, QWidget *parent) : QWid
 	clearAll();
 	m_borliMode = true;
 	m_curveMode = false;
+	m_drawRuler = false;
 	m_state = 0;
 
 	QPalette pal = palette();
@@ -132,15 +133,28 @@ void CalibrationWidget::mouseReleaseEvent(QMouseEvent* event)
 {
 	Q_UNUSED(event);
 
+	bool grabed = false;
 	for (BorderLimit& elem : m_borderLimits) {
 		if (elem.state == 2) {
 			elem.state = 1;
 			setCursor(QCursor(Qt::OpenHandCursor));
+			grabed = true;
 		}
 	}
 
-	if (m_curveMode) {
-		if (!m_curves.isEmpty() && m_curves.last().pts.size() <= 1) m_curves.removeLast();
+	if (m_curveMode && !grabed && !m_curves.isEmpty()) {
+		if (m_curves.last().pts.size() <= 10) {
+			m_curves.removeLast();
+		} else if (m_state == 2) {
+			if (m_drawRuler) {
+				m_drawRuler = false;
+				m_text = "Move the border limit to separate the strait and the distorted part of your line\n"
+						 "Then repeat the procedure for the other borders";
+			} else {
+				m_text = "Only the last line of each border is taken in account\n"
+						 "Press enter when you have finished";
+			}
+		}
 	}
 
 	update();
@@ -236,6 +250,24 @@ void CalibrationWidget::paintEvent(QPaintEvent* event)
 
 			painter.setPen(Qt::red);
 			painter.drawPath(path_corrected);
+		}
+	}
+
+	if (m_drawRuler) {
+		int dx = 10;
+		painter.translate(m_w-26*dx, 0.5*m_h);
+		painter.rotate(-20);
+		painter.setPen(QPen(Qt::black, 2));
+		painter.drawRect(-26*dx, -25, 52*dx, 50);
+		for (int i = 0; i <= 50; ++i) {
+			int x = -25*dx + i*dx;
+			if (i % 5 == 0) {
+				painter.setPen(QPen(Qt::black, 2));
+				painter.drawLine(x, -25, x, 10);
+			} else {
+				painter.setPen(QPen(Qt::black, 1));
+				painter.drawLine(x, -25, x, 0);
+			}
 		}
 	}
 }
@@ -445,7 +477,7 @@ void CalibrationWidget::nextStep()
 		m_borliMode = false;
 		m_curveMode = false;
 		m_text = "Linear calibration\n"
-				 "Tap anywhere to add control point";
+				 "Tap anywhere away from the borders to add a new control point";
 		m_state = 1;
 	} else if (m_state == 1) {
 		int new_area[4];
@@ -487,7 +519,8 @@ void CalibrationWidget::nextStep()
 
 		m_borliMode = true;
 		m_curveMode = true;
-		m_text = "Distortion calibration\nPress Enter when finish";
+		m_drawRuler = true;
+		m_text = "Distortion calibration\nWith a ruler, make a strait line";
 		m_state = 2;
 		clearAll();
 		update();
