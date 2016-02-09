@@ -2,6 +2,7 @@
 #define CALIBRATIONWIDGET_H
 
 #include <QWidget>
+#include <QLabel>
 
 /*         Top Y
  *    +--------------+
@@ -55,8 +56,13 @@ private:
 
 	void fitCurves();
 	void clearAll();
-	void nextStep();
+	int rotation();
 
+private slots:
+	void nextStep();
+	void screenChanged();
+
+private:
 	inline double wh(int border) const {
 		return border % 2 == 0 ? m_w : m_h;
 	}
@@ -83,11 +89,13 @@ private:
 	bool m_borliMode;
 	bool m_drawRuler;
 
+	QScreen* m_screen;
 	double m_w, m_h;
+	int m_rotation;
 
 	QVector<QPointF> m_phy_points;
 	QVector<QPointF> m_raw_points;
-	QString m_text;
+	QLabel* m_text;
 
 	struct BorderLimit {
 		double pos;
@@ -110,7 +118,7 @@ private:
 
 	QList<Curve> m_curves;
 
-	QVector<double> m_area;
+	QVector<int> m_area;
 	QString m_device;
 	int m_state;
 };

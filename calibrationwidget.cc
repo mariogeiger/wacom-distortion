@@ -1,12 +1,15 @@
-#include "calibrationwidget.h"
+#include "calibrationwidget.hh"
 #include <QMouseEvent>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QPainter>
-#include <QMessageBox>
 #include <QProcess>
 #include <QTextStream>
 #include <QInputDialog>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QDebug>
 
 extern "C" {
 #include "lmath.h"
@@ -16,12 +19,11 @@ CalibrationWidget::CalibrationWidget(const QString& dev, QWidget *parent) : QWid
 {
 	m_device = dev;
 
-	QList<QScreen*> screens = QGuiApplication::screens();
-	if (screens.isEmpty()) {
-		m_w = m_h = -1;
-	} else {
-		m_w = screens.first()->size().width();
-		m_h = screens.first()->size().height();
+	m_screen = QGuiApplication::screens().value(0, nullptr);
+	if (m_screen) {
+		m_w = m_screen->size().width();
+		m_h = m_screen->size().height();
+		connect(m_screen, &QScreen::geometryChanged, this, &CalibrationWidget::screenChanged);
 	}
 
 	clearAll();
@@ -36,6 +38,24 @@ CalibrationWidget::CalibrationWidget(const QString& dev, QWidget *parent) : QWid
 	setCursor(QCursor(Qt::CrossCursor));
 	setMouseTracking(true);
 	setWindowState(windowState() | Qt::WindowFullScreen);
+
+	m_text = new QLabel(this);
+	m_text->setAlignment(Qt::AlignCenter);
+
+	QPushButton *button = new QPushButton("Ok", this);
+	button->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+	connect(button, &QPushButton::clicked, this, &CalibrationWidget::nextStep);
+
+	QVBoxLayout* vlay = new QVBoxLayout();
+	vlay->addStretch(1);
+	vlay->addWidget(m_text);
+	vlay->addWidget(button, 0, Qt::AlignCenter);
+	vlay->addStretch(1);
+
+	QHBoxLayout* hlay = new QHBoxLayout(this);
+	hlay->addStretch(1);
+	hlay->addLayout(vlay);
+	hlay->addStretch(1);
 
 	nextStep();
 }
@@ -73,12 +93,12 @@ void CalibrationWidget::mousePressEvent(QMouseEvent* event)
 			m_phy_points << event->globalPos();
 			setCursor(QCursor(Qt::BlankCursor));
 
-			m_text = "Now tap the more precisely in the center of the circle";
+			m_text->setText("Now tap the more precisely in the center of the circle");
 		} else if (m_raw_points.size() < m_phy_points.size()) {
 			m_raw_points << event->globalPos();
 			setCursor(QCursor(Qt::CrossCursor));
 
-			m_text = "Add other control points or press Enter if you think you have enough points";
+			m_text->setText("Add other control points or press Ok if you think you have enough points");
 		}
 	}
 	update();
@@ -148,11 +168,11 @@ void CalibrationWidget::mouseReleaseEvent(QMouseEvent* event)
 		} else if (m_state == 2) {
 			if (m_drawRuler) {
 				m_drawRuler = false;
-				m_text = "Move the border limit to separate the strait and the distorted part of your line\n"
-						 "Then repeat the procedure for the other borders";
+				m_text->setText("Move the border limit to separate the strait and the distorted part of your line\n"
+								"Then repeat the procedure for the other borders");
 			} else {
-				m_text = "Only the last line of each border is taken in account\n"
-						 "Press enter when you have finished";
+				m_text->setText("Only the last line of each border is taken in account\n"
+								"Press Ok when you have finished");
 			}
 		}
 	}
@@ -166,9 +186,6 @@ void CalibrationWidget::paintEvent(QPaintEvent* event)
 
 	QPainter painter(this);
 	painter.setRenderHint(QPainter::Antialiasing, true);
-
-	painter.setPen(Qt::darkGray);
-	painter.drawText(rect(), Qt::AlignCenter, m_text);
 
 	painter.translate(mapFromGlobal(QPoint(0,0)));
 
@@ -199,7 +216,6 @@ void CalibrationWidget::paintEvent(QPaintEvent* event)
 		painter.drawEllipse(r);
 	}
 
-	painter.setRenderHint(QPainter::Antialiasing, false);
 	for (int i = 0; i < m_curves.size(); ++i) {
 		const Curve& c = m_curves[i];
 		if (c.pts.isEmpty()) continue;
@@ -213,7 +229,7 @@ void CalibrationWidget::paintEvent(QPaintEvent* event)
 		painter.drawPath(path_curve);
 
 		if (m_borliMode && c.border != -1) {
-			painter.setPen(Qt::blue);
+			painter.setPen(QPen(Qt::blue, 1.2));
 
 			double x1, y1, x2, y2;
 			if (c.border % 2 == 0) {
@@ -229,7 +245,7 @@ void CalibrationWidget::paintEvent(QPaintEvent* event)
 			}
 			painter.drawLine(x1, y1, x2, y2);
 
-			QPainterPath path_corrected;
+			painter.setPen(QPen(Qt::red, 1.2));
 			for (int j = 0; j < c.pts.size(); ++j) {
 				if (isInBorder(c.border, c.pts[j])) {
 					double raw = pixelToUnit(c.border, xy(c.border, c.pts[j]));
@@ -242,22 +258,16 @@ void CalibrationWidget::paintEvent(QPaintEvent* event)
 						x = c.pts[j].x();
 						y = unitToPixel(c.border, phy);
 					}
-					if (path_corrected.elementCount() == 0)
-						path_corrected.moveTo(x, y);
-					else
-						path_corrected.lineTo(x, y);
+					painter.drawPoint(x, y);
 				}
 			}
-
-			painter.setPen(Qt::red);
-			painter.drawPath(path_corrected);
 		}
 	}
 
 	if (m_drawRuler) {
 		painter.setRenderHint(QPainter::Antialiasing, true);
 		int dx = 10;
-		painter.translate(m_w-26*dx, 0.5*m_h);
+		painter.translate(m_w-24*dx, 0.5*m_h);
 		painter.rotate(-20);
 		painter.setPen(QPen(Qt::black, 2));
 		painter.drawRect(-26*dx, -25, 52*dx, 50);
@@ -272,6 +282,8 @@ void CalibrationWidget::paintEvent(QPaintEvent* event)
 			}
 		}
 	}
+
+	QWidget::paintEvent(event);
 }
 
 void CalibrationWidget::keyPressEvent(QKeyEvent* event)
@@ -390,6 +402,16 @@ void CalibrationWidget::clearAll()
 	m_curves.clear();
 }
 
+int CalibrationWidget::rotation()
+{
+	//qDebug() << m_screen->nativeOrientation() << m_screen->primaryOrientation() << m_screen->orientation();
+	if (m_screen->nativeOrientation() == Qt::PrimaryOrientation) {
+		return m_screen->angleBetween(Qt::LandscapeOrientation, m_screen->orientation()) / 90;
+	} else {
+		return m_screen->angleBetween(m_screen->nativeOrientation(), m_screen->orientation()) / 90;
+	}
+}
+
 void fix_area(double slope, double offset, double range, double old_min, double old_max, int& new_min, int& new_max)
 {
 	new_min = std::round(old_min - (old_max - old_min) * offset / (slope * range));
@@ -403,6 +425,7 @@ void CalibrationWidget::nextStep()
 	QProcess pro;
 
 	if (m_state == 0) {
+
 		// distortion to identity
 		command = "xinput set-float-prop \"%1\" \"Wacom Border Distortion\" 0 0 0 0 1 0   0 0 0 0 1 0   0 0 0 0 1 0   0 0 0 0 1 0";
 		command = command.arg(m_device);
@@ -478,11 +501,20 @@ void CalibrationWidget::nextStep()
 
 		m_borliMode = false;
 		m_curveMode = false;
-		m_text = "Linear calibration\n"
-				 "Tap anywhere away from the borders to add a new control point";
+		m_text->setText("Linear calibration : "
+						"Tap anywhere away from the borders to add a new control point");
+		m_rotation = rotation();
+		//qDebug() << m_rotation;
 		m_state = 1;
+
 	} else if (m_state == 1) {
-		int new_area[4];
+
+		QVector<int> old_area(4);
+		QVector<int> new_area(4);
+		old_area = m_area;
+		// TopX, TopY, BottomX, BottomY
+		for (int i = m_rotation; i >= 0; --i) old_area.prepend(old_area.takeLast());
+
 		QVector<double> a, arhs;
 		for (int i = 0; i < m_raw_points.size(); ++i) {
 			a << m_raw_points[i].x() << 1.0;
@@ -491,12 +523,12 @@ void CalibrationWidget::nextStep()
 		double res[2];
 		int r = least_squares(arhs.size(), 2, a.data(), arhs.data(), res);
 		if (r != 0) {
-			m_text = "Please, add more points or quit with Escape";
+			m_text->setText("Please, add more points or quit with Escape");
 			update();
 			return;
 		}
 		// phy = res[0] * raw + res[1]
-		fix_area(res[0], res[1], m_w, m_area[0], m_area[2], new_area[0], new_area[2]);
+		fix_area(res[0], res[1], m_w, old_area[TopX], old_area[BottomX], new_area[TopX], new_area[BottomX]);
 
 		a.clear(); arhs.clear();
 		for (int i = 0; i < m_raw_points.size(); ++i) {
@@ -505,15 +537,19 @@ void CalibrationWidget::nextStep()
 		}
 		r = least_squares(arhs.size(), 2, a.data(), arhs.data(), res);
 		if (r != 0) {
-			m_text = "More points please";
+			m_text->setText("Please, add more points or quit with Escape");
 			update();
 			return;
 		}
 		// phy = res[0] * raw + res[1]
-		fix_area(res[0], res[1], m_h, m_area[1], m_area[3], new_area[1], new_area[3]);
+		fix_area(res[0], res[1], m_h, old_area[TopY], old_area[BottomY], new_area[TopY], new_area[BottomY]);
+
+		// TopX, TopY, BottomX, BottomY
+		for (int i = m_rotation; i >= 0; --i) new_area.append(new_area.takeFirst());
 
 		command = "xinput set-int-prop \"%1\" \"Wacom Tablet Area\" 32 %2 %3 %4 %5";
-		command = command.arg(m_device).arg(new_area[0]).arg(new_area[1]).arg(new_area[2]).arg(new_area[3]);
+		command = command.arg(m_device).arg(new_area[TopX]).arg(new_area[TopY]).arg(new_area[BottomX]).arg(new_area[BottomY]);
+
 		cout << "> " << command << endl;
 		pro.start(command); pro.waitForFinished();
 		cout << pro.readAllStandardOutput();
@@ -522,32 +558,41 @@ void CalibrationWidget::nextStep()
 		m_borliMode = true;
 		m_curveMode = true;
 		m_drawRuler = true;
-		m_text = "Distortion calibration\nWith a ruler, make a strait line";
+		m_text->setText("Distortion calibration\nWith a ruler, make a strait line");
 		m_state = 2;
 		clearAll();
 		update();
+
 	} else if (m_state == 2) {
 
-		QVector<double> values;
-		for (int i = 0; i < 4; ++i) {
-			values << 0.0 << 0.0 << 0.0 << 0.0 << 1.0 << 0.0;
-		}
+		QVector<QVector<double>> values(4);
 
-		for (int border = 0; border < 4; ++border) {
+		for (int b : {TopX, TopY, BottomX, BottomY}) {
+			values[b] << 0.0 << 0.0 << 0.0 << 0.0 << 1.0 << 0.0;
+
 			// take only the last curve
 			for (int j = 0; j < m_curves.size(); ++j) {
-				if (m_curves[j].border == border) {
-					values[6 * border] = pixelToUnit(border, m_borderLimits[border].pos);
+				if (m_curves[j].border == b) {
+					values[b][0] = pixelToUnit(b, m_borderLimits[b].pos);
 					for (int i = 0; i < 5; ++ i) {
-						values[6 * border + i + 1] = m_curves[j].poly[i];
+						values[b][i + 1] = m_curves[j].poly[i];
 					}
 				}
 			}
 		}
 
+		// TopX, TopY, BottomX, BottomY
+		for (int i = m_rotation; i >= 0; --i) values.append(values.takeFirst());
+
+
 		command = "xinput set-float-prop \"%1\" \"Wacom Border Distortion\"";
 		command = command.arg(m_device);
-		for (int i = 0; i < values.size(); ++i) command += QString(" %1").arg(values[i]);
+		for (int b : {TopX, TopY, BottomX, BottomY}) {
+			for (int i = 0; i < 5; ++ i) {
+				command += QString(" %1").arg(values[b][i]);
+			}
+		}
+
 		cout << "> " << command << endl;
 		pro.start(command); pro.waitForFinished();
 		cout << pro.readAllStandardOutput();
@@ -555,12 +600,21 @@ void CalibrationWidget::nextStep()
 
 		m_state = 3;
 		m_borliMode = false;
-		m_text = "Test the result";
+		m_text->setText("Test the result");
 		clearAll();
 		update();
+
 	} else if (m_state == 3) {
 		close();
 	}
+}
+
+void CalibrationWidget::screenChanged()
+{
+	m_w = m_screen->size().width();
+	m_h = m_screen->size().height();
+
+	//qDebug() << m_w << m_h << rotation() << m_screen->orientation();
 }
 
 void CalibrationWidget::BorderLimit::paint(QPainter* p, double w, double h)

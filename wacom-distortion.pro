@@ -15,11 +15,11 @@ TEMPLATE = app
 
 SOURCES += main.cc\
     lmath.c \
-    calibrationwidget.cpp
+    calibrationwidget.cc
 
 HEADERS  += \
     lmath.h \
-    calibrationwidget.h
+    calibrationwidget.hh
 
 DISTFILES += \
     README.md
