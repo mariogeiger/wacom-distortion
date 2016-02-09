@@ -56,8 +56,6 @@ CalibrationWidget::CalibrationWidget(const QString& dev, QWidget *parent) : QWid
 	hlay->addStretch(1);
 	hlay->addLayout(vlay);
 	hlay->addStretch(1);
-
-	nextStep();
 }
 
 CalibrationWidget::~CalibrationWidget()

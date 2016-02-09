@@ -58,8 +58,10 @@ private:
 	void clearAll();
 	int rotation();
 
-private slots:
+public slots:
 	void nextStep();
+
+private slots:
 	void screenChanged();
 
 private:

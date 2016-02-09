@@ -8,6 +8,7 @@ int main(int argc, char *argv[])
 
 	CalibrationWidget w(app.arguments().value(1, "<Your device>"));
 	w.show();
+	w.nextStep();
 
 	return app.exec();
 }
