@@ -430,7 +430,7 @@ void CalibrationWidget::nextStep()
 		cout << "> " << command << endl;
 		pro.start(command); pro.waitForFinished();
 		cout << pro.readAllStandardOutput();
-		cout << pro.readAllStandardError();
+        cout << pro.readAllStandardError() << flush;
 
 		if (pro.exitCode() != 0) {
 			pro.start("xinput"); pro.waitForFinished();
@@ -466,12 +466,12 @@ void CalibrationWidget::nextStep()
 		cout << "> " << command << endl;
 		pro.start(command);
 		pro.waitForFinished();
-		cout << pro.readAllStandardOutput();
-		cout << pro.readAllStandardError();
+        QByteArray output = pro.readAllStandardOutput();
+        cout << output;
+        cout << pro.readAllStandardError() << flush;
 
 		m_area.clear();
 		if (pro.exitCode() == 0) {
-			QByteArray output = pro.readAllStandardOutput();
 			int pos = output.indexOf("Wacom Tablet Area");
 			if (pos != -1) {
 				pos = output.indexOf(':', pos);
@@ -495,14 +495,16 @@ void CalibrationWidget::nextStep()
 		if (m_area.isEmpty()) {
 			cout << "Assume that Wacom Tablet Area is 0 0 10000 10000" << endl;
 			m_area << 0 << 0 << 10000 << 10000;
-		}
+        } else {
+            cout << "Wacom Tablet Area is " << m_area[0] << " " << m_area[1] << " " << m_area[2] << " " << m_area[3] << endl;
+        }
 
 		m_borliMode = false;
 		m_curveMode = false;
 		m_text->setText("Linear calibration : "
 						"Tap anywhere away from the borders to add a new control point");
 		m_rotation = rotation();
-		//qDebug() << m_rotation;
+        qDebug() << m_rotation;
 		m_state = 1;
 
 	} else if (m_state == 1) {
@@ -511,7 +513,7 @@ void CalibrationWidget::nextStep()
 		QVector<int> new_area(4);
 		old_area = m_area;
 		// TopX, TopY, BottomX, BottomY
-		for (int i = m_rotation; i >= 0; --i) old_area.prepend(old_area.takeLast());
+        for (int i = 0; i < m_rotation; ++i) old_area.prepend(old_area.takeLast());
 
 		QVector<double> a, arhs;
 		for (int i = 0; i < m_raw_points.size(); ++i) {
@@ -543,7 +545,7 @@ void CalibrationWidget::nextStep()
 		fix_area(res[0], res[1], m_h, old_area[TopY], old_area[BottomY], new_area[TopY], new_area[BottomY]);
 
 		// TopX, TopY, BottomX, BottomY
-		for (int i = m_rotation; i >= 0; --i) new_area.append(new_area.takeFirst());
+        for (int i = 0; i < m_rotation; ++i) new_area.append(new_area.takeFirst());
 
 		command = "xinput set-int-prop \"%1\" \"Wacom Tablet Area\" 32 %2 %3 %4 %5";
 		command = command.arg(m_device).arg(new_area[TopX]).arg(new_area[TopY]).arg(new_area[BottomX]).arg(new_area[BottomY]);
@@ -551,7 +553,7 @@ void CalibrationWidget::nextStep()
 		cout << "> " << command << endl;
 		pro.start(command); pro.waitForFinished();
 		cout << pro.readAllStandardOutput();
-		cout << pro.readAllStandardError();
+        cout << pro.readAllStandardError() << flush;
 
 		m_borliMode = true;
 		m_curveMode = true;
@@ -580,13 +582,13 @@ void CalibrationWidget::nextStep()
 		}
 
 		// TopX, TopY, BottomX, BottomY
-		for (int i = m_rotation; i >= 0; --i) values.append(values.takeFirst());
+        for (int i = 0; i < m_rotation; ++i) values.append(values.takeFirst());
 
 
 		command = "xinput set-float-prop \"%1\" \"Wacom Border Distortion\"";
 		command = command.arg(m_device);
 		for (int b : {TopX, TopY, BottomX, BottomY}) {
-			for (int i = 0; i < 5; ++ i) {
+            for (int i = 0; i < 6; ++ i) {
 				command += QString(" %1").arg(values[b][i]);
 			}
 		}
@@ -594,7 +596,7 @@ void CalibrationWidget::nextStep()
 		cout << "> " << command << endl;
 		pro.start(command); pro.waitForFinished();
 		cout << pro.readAllStandardOutput();
-		cout << pro.readAllStandardError();
+        cout << pro.readAllStandardError() << flush;
 
 		m_state = 3;
 		m_borliMode = false;
