@@ -499,12 +499,13 @@ void CalibrationWidget::nextStep()
             cout << "Wacom Tablet Area is " << m_area[0] << " " << m_area[1] << " " << m_area[2] << " " << m_area[3] << endl;
         }
 
+        m_rotation = rotation();
+        cout << "The orientation of the screen is " << m_rotation << endl;
+
 		m_borliMode = false;
 		m_curveMode = false;
 		m_text->setText("Linear calibration : "
 						"Tap anywhere away from the borders to add a new control point");
-		m_rotation = rotation();
-        qDebug() << m_rotation;
 		m_state = 1;
 
 	} else if (m_state == 1) {
