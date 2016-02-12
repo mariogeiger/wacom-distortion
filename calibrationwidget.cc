@@ -357,15 +357,17 @@ void CalibrationWidget::fitCurves()
 					}
 				}
 				double d = pixelToUnit(c.border, m_borderLimits[c.border].pos);
-				double cons[10] = {
+                double cons[] = {
 					4.*d*d*d,      3.*d*d,      2.*d,      1.0,   0.0,
-					d*d*d*d,       d*d*d,       d*d,       d,     1.0
+                    d*d*d*d,       d*d*d,       d*d,       d,     1.0,
+                    0,             0,           0,         1.0,   0.0
 				};
-				double crhs[2] = {
+                double crhs[] = {
 					1.0,
-					d
+                    d,
+                    1.0
 				};
-				least_squares_constraint(arhs.size(), 5, 2, a.data(), arhs.data(), cons, crhs, c.poly);
+                least_squares_constraint(arhs.size(), 5, 3, a.data(), arhs.data(), cons, crhs, c.poly);
 			}
 		}
 	}
