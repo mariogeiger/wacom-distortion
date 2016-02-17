@@ -65,112 +65,155 @@ CalibrationWidget::~CalibrationWidget()
 
 void CalibrationWidget::mousePressEvent(QMouseEvent* event)
 {
-	bool grab = false;
-	for (BorderLimit& elem : m_borderLimits) {
-		if (elem.state == 1) {
-			elem.state = 2;
-			grab = true;
+	Q_UNUSED(event);
+	if (m_borliMode) {
+		bool grab = false;
+		for (BorderLimit& elem : m_borderLimits) {
+			if (elem.state == 1) {
+				elem.state = 2;
+				grab = true;
+			}
+		}
+
+		if (grab) {
+			setCursor(QCursor(Qt::ClosedHandCursor));
+			update();
 		}
 	}
-
-	if (grab) {
-		setCursor(QCursor(Qt::ClosedHandCursor));
-		update();
-		return;
-	}
-
-	if (m_curveMode) {
-		if (event->buttons() & Qt::LeftButton) {
-			Curve c;
-			c.border = -1;
-			c.pts.append(event->globalPos());
-			m_curves.append(c);
-		}
-	} else {
-		if (m_raw_points.size() == m_phy_points.size()) {
-			m_phy_points << event->globalPos();
-			setCursor(QCursor(Qt::BlankCursor));
-
-			m_text->setText("Now tap the more precisely in the center of the circle");
-		} else if (m_raw_points.size() < m_phy_points.size()) {
-			m_raw_points << event->globalPos();
-			setCursor(QCursor(Qt::CrossCursor));
-
-			m_text->setText("Add other control points or press Ok if you think you have enough points");
-		}
-	}
-	update();
 }
 
 void CalibrationWidget::mouseMoveEvent(QMouseEvent* event)
 {
-	if (m_phy_points.size() != m_raw_points.size()) return;
-
-	bool grab = false;
 	if (m_borliMode) {
-		for (BorderLimit& elem : m_borderLimits) {
-			if (elem.state == 2) {
-				elem.move(elem.horizontal ? event->globalY() : event->globalX());
-				grab = true;
+		if (event->buttons() == 0) {
+			bool mouseCome = false;
+			bool mouseLeave = false;
+			bool mouseOver = false;
+			for (BorderLimit& elem : m_borderLimits) {
+				int d = std::abs((elem.horizontal ? event->globalY() : event->globalX()) - elem.pos);
+				if (d <= 5) {
+					elem.state = 1;
+					mouseCome = true;
+				}
+				if (elem.state == 1 && d > 5) {
+					elem.state = 0;
+					mouseLeave = true;
+				}
+				if (elem.state == 1) mouseOver = true;
+			}
+			if (mouseOver) setCursor(QCursor(Qt::OpenHandCursor));
+			else setCursor(QCursor(Qt::CrossCursor));
+
+			if (mouseCome || mouseLeave) update();
+		}
+
+		if (event->buttons() != 0) {
+			bool limitMoved = false;
+			for (BorderLimit& elem : m_borderLimits) {
+				if (elem.state == 2) {
+					elem.move(elem.horizontal ? event->globalY() : event->globalX());
+					limitMoved = true;
+				}
+			}
+			if (limitMoved) {
+				fitCurves();
+				update();
 			}
 		}
-		if (grab) {
-			fitCurves();
-			update();
-			return;
-		}
 	}
-
-	if (m_curveMode) {
-		if (event->buttons() & Qt::LeftButton) {
-			m_curves.last().pts.append(event->globalPos());
-			if (m_borliMode) fitCurves();
-			update();
-			return;
-		}
-	}
-
-	if (m_borliMode) {
-		bool ungrab = false;
-		for (BorderLimit& elem : m_borderLimits) {
-			if (std::abs((elem.horizontal ? event->globalY() : event->globalX()) - elem.pos) <= 5) {
-				elem.state = 1;
-				grab = true;
-			} else if (elem.state == 1) {
-				elem.state = 0;
-				ungrab = true;
-			}
-		}
-		if (grab) setCursor(QCursor(Qt::OpenHandCursor));
-		if (ungrab) setCursor(QCursor(Qt::CrossCursor));
-	}
-	update();
 }
 
 void CalibrationWidget::mouseReleaseEvent(QMouseEvent* event)
 {
 	Q_UNUSED(event);
+	if (m_borliMode) {
+		for (BorderLimit& elem : m_borderLimits) {
+			if (elem.state == 2) {
+				elem.state = 1;
+				setCursor(QCursor(Qt::OpenHandCursor));
+			}
+		}
+	}
+}
 
-	bool grabed = false;
-	for (BorderLimit& elem : m_borderLimits) {
-		if (elem.state == 2) {
-			elem.state = 1;
-			setCursor(QCursor(Qt::OpenHandCursor));
-			grabed = true;
+void CalibrationWidget::tabletEvent(QTabletEvent *event)
+{
+	bool eraser = event->pointerType() == QTabletEvent::Eraser || event->buttons() == Qt::RightButton;
+
+	if (event->type() == QEvent::TabletPress) {
+		if (m_curveMode) {
+			if (!eraser) {
+				Curve c;
+				c.border = -1;
+				m_curves.append(c);
+			}
+		} else {
+			if (!eraser) {
+				if (m_raw_points.size() == m_phy_points.size()) {
+					m_phy_points << event->globalPosF();
+					setCursor(QCursor(Qt::BlankCursor));
+
+					m_text->setText("Now tap the more precisely in the center of the circle");
+				} else if (m_raw_points.size() < m_phy_points.size()) {
+					m_raw_points << event->globalPosF();
+					setCursor(QCursor(Qt::CrossCursor));
+
+					m_text->setText("Add other control points or press Ok if you think you have enough points");
+				}
+			} else {
+				if (m_phy_points.size() > 0) {
+					if (m_phy_points.size() == m_raw_points.size()) {
+						m_raw_points.removeLast();
+						setCursor(QCursor(Qt::BlankCursor));
+					} else {
+						m_phy_points.removeLast();
+						setCursor(QCursor(Qt::CrossCursor));
+					}
+				}
+				m_text->clear();
+			}
 		}
 	}
 
-	if (m_curveMode && !grabed && !m_curves.isEmpty()) {
-		if (m_curves.last().pts.size() <= 10) {
-			m_curves.removeLast();
-		} else if (m_state == 2) {
-			if (m_drawRuler) {
-				m_drawRuler = false;
-				m_text->setText("Move the border limit to separate the strait and the distorted part of your line\n"
-								"Then repeat the procedure for the other borders");
+	if (event->type() == QEvent::TabletMove) {
+		if (m_phy_points.size() != m_raw_points.size()) return;
+
+		bool limitAboutMoving = false;
+		for (BorderLimit& elem : m_borderLimits) {
+			if (elem.state >= 1) limitAboutMoving = true;
+		}
+
+		if (m_curveMode && !limitAboutMoving) {
+			if (!eraser) {
+				m_curves.last().pts.append(event->globalPosF());
+				if (m_borliMode) fitCurves();
 			} else {
-				m_text->setText("Only the last line of each border is taken in account\n"
-								"Press Ok when you have finished");
+				for (int i = 0; i < m_curves.size(); ++i) {
+					for (int j = 0; j < m_curves[i].pts.size(); ++j) {
+						if ((m_curves[i].pts[j] - event->globalPosF()).manhattanLength() <= 7) {
+							m_curves.removeAt(i);
+							i--;
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if (event->type() == QEvent::TabletRelease) {
+		if (m_curveMode && !m_curves.isEmpty()) {
+			if (m_curves.last().pts.size() <= 20) {
+				m_curves.removeLast();
+			} else if (m_state == 2) {
+				if (m_drawRuler) {
+					m_drawRuler = false;
+					m_text->setText("Move the border limit to separate the strait and the distorted part of your line\n"
+													"Then repeat the procedure for the other borders");
+				} else {
+					m_text->setText("Only the last line of each border is taken in account\n"
+													"Press Ok when you have finished");
+				}
 			}
 		}
 	}
@@ -357,17 +400,17 @@ void CalibrationWidget::fitCurves()
 					}
 				}
 				double d = pixelToUnit(c.border, m_borderLimits[c.border].pos);
-                double cons[] = {
+				double cons[] = {
 					4.*d*d*d,      3.*d*d,      2.*d,      1.0,   0.0,
-                    d*d*d*d,       d*d*d,       d*d,       d,     1.0,
-                    0,             0,           0,         1.0,   0.0
+					d*d*d*d,       d*d*d,       d*d,       d,     1.0,
+					0,             0,           0,         1.0,   0.0
 				};
-                double crhs[] = {
+				double crhs[] = {
 					1.0,
-                    d,
-                    1.0
+					d,
+					1.0
 				};
-                least_squares_constraint(arhs.size(), 5, 3, a.data(), arhs.data(), cons, crhs, c.poly);
+				least_squares_constraint(arhs.size(), 5, 3, a.data(), arhs.data(), cons, crhs, c.poly);
 			}
 		}
 	}
@@ -432,7 +475,7 @@ void CalibrationWidget::nextStep()
 		cout << "> " << command << endl;
 		pro.start(command); pro.waitForFinished();
 		cout << pro.readAllStandardOutput();
-        cout << pro.readAllStandardError() << flush;
+		cout << pro.readAllStandardError() << flush;
 
 		if (pro.exitCode() != 0) {
 			pro.start("xinput"); pro.waitForFinished();
@@ -468,9 +511,9 @@ void CalibrationWidget::nextStep()
 		cout << "> " << command << endl;
 		pro.start(command);
 		pro.waitForFinished();
-        QByteArray output = pro.readAllStandardOutput();
-        cout << output;
-        cout << pro.readAllStandardError() << flush;
+		QByteArray output = pro.readAllStandardOutput();
+		cout << output;
+		cout << pro.readAllStandardError() << flush;
 
 		m_area.clear();
 		if (pro.exitCode() == 0) {
@@ -497,26 +540,26 @@ void CalibrationWidget::nextStep()
 		if (m_area.isEmpty()) {
 			cout << "Assume that Wacom Tablet Area is 0 0 10000 10000" << endl;
 			m_area << 0 << 0 << 10000 << 10000;
-        } else {
-            cout << "Wacom Tablet Area is " << m_area[0] << " " << m_area[1] << " " << m_area[2] << " " << m_area[3] << endl;
-        }
+		} else {
+			cout << "Wacom Tablet Area is " << m_area[0] << " " << m_area[1] << " " << m_area[2] << " " << m_area[3] << endl;
+		}
 
-        m_rotation = rotation();
-        cout << "The orientation of the screen is " << m_rotation << endl;
+		m_rotation = rotation();
+		cout << "The orientation of the screen is " << m_rotation << endl;
 
 		m_borliMode = false;
 		m_curveMode = false;
 		m_text->setText("Linear calibration : "
-						"Tap anywhere away from the borders to add a new control point");
+										"Tap anywhere away from the borders to add a new control point");
 		m_state = 1;
-
+		update();
 	} else if (m_state == 1) {
 
 		QVector<int> old_area(4);
 		QVector<int> new_area(4);
 		old_area = m_area;
 		// TopX, TopY, BottomX, BottomY
-        for (int i = 0; i < m_rotation; ++i) old_area.prepend(old_area.takeLast());
+		for (int i = 0; i < m_rotation; ++i) old_area.prepend(old_area.takeLast());
 
 		QVector<double> a, arhs;
 		for (int i = 0; i < m_raw_points.size(); ++i) {
@@ -548,7 +591,7 @@ void CalibrationWidget::nextStep()
 		fix_area(res[0], res[1], m_h, old_area[TopY], old_area[BottomY], new_area[TopY], new_area[BottomY]);
 
 		// TopX, TopY, BottomX, BottomY
-        for (int i = 0; i < m_rotation; ++i) new_area.append(new_area.takeFirst());
+		for (int i = 0; i < m_rotation; ++i) new_area.append(new_area.takeFirst());
 
 		command = "xinput set-int-prop \"%1\" \"Wacom Tablet Area\" 32 %2 %3 %4 %5";
 		command = command.arg(m_device).arg(new_area[TopX]).arg(new_area[TopY]).arg(new_area[BottomX]).arg(new_area[BottomY]);
@@ -556,7 +599,7 @@ void CalibrationWidget::nextStep()
 		cout << "> " << command << endl;
 		pro.start(command); pro.waitForFinished();
 		cout << pro.readAllStandardOutput();
-        cout << pro.readAllStandardError() << flush;
+		cout << pro.readAllStandardError() << flush;
 
 		m_borliMode = true;
 		m_curveMode = true;
@@ -585,13 +628,13 @@ void CalibrationWidget::nextStep()
 		}
 
 		// TopX, TopY, BottomX, BottomY
-        for (int i = 0; i < m_rotation; ++i) values.append(values.takeFirst());
+		for (int i = 0; i < m_rotation; ++i) values.append(values.takeFirst());
 
 
 		command = "xinput set-float-prop \"%1\" \"Wacom Border Distortion\"";
 		command = command.arg(m_device);
 		for (int b : {TopX, TopY, BottomX, BottomY}) {
-            for (int i = 0; i < 6; ++ i) {
+			for (int i = 0; i < 6; ++ i) {
 				command += QString(" %1").arg(values[b][i]);
 			}
 		}
@@ -599,7 +642,7 @@ void CalibrationWidget::nextStep()
 		cout << "> " << command << endl;
 		pro.start(command); pro.waitForFinished();
 		cout << pro.readAllStandardOutput();
-        cout << pro.readAllStandardError() << flush;
+		cout << pro.readAllStandardError() << flush;
 
 		m_state = 3;
 		m_borliMode = false;

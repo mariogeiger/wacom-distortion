@@ -5,30 +5,30 @@
 #include <QLabel>
 
 /*         Top Y
- *    +--------------+
- * Top|              |
- *  X |              | Bottom X
- *    |              |
- *    +--------------+
- *        Bottom Y
- *
- *
- *
- *     +-----------------------------+
- *     |                      |      |
- *     |                      |      |
- *     |                      |      |
- *     |                      |      |<-- Screen border
- *     |                      |      |
- *     |                      |      |
- *     |    Axis of Unit      |      |
- * <---1----------------------|------0
- *     |                      |      |
- *     +-----------------------------+
- *                            ^
- *                BorderLimit |
- *
- */
+*    +--------------+
+* Top|              |
+*  X |              | Bottom X
+*    |              |
+*    +--------------+
+*        Bottom Y
+*
+*
+*
+*     +-----------------------------+
+*     |                      |      |
+*     |                      |      |
+*     |                      |      |
+*     |                      |      |<-- Screen border
+*     |                      |      |
+*     |                      |      |
+*     |    Axis of Unit      |      |
+* <---1----------------------|------0
+*     |                      |      |
+*     +-----------------------------+
+*                            ^
+*                BorderLimit |
+*
+*/
 
 class CalibrationWidget : public QWidget
 {
@@ -47,11 +47,12 @@ public:
 	inline void setDevice(const QString& dev) { m_device = dev; }
 
 private:
-	virtual void mousePressEvent(QMouseEvent* event);
-	virtual void mouseMoveEvent(QMouseEvent* event);
-	virtual void mouseReleaseEvent(QMouseEvent* event);
-	virtual void paintEvent(QPaintEvent* event);
-	virtual void keyPressEvent(QKeyEvent* event);
+	virtual void mousePressEvent(QMouseEvent* event) override;
+	virtual void mouseMoveEvent(QMouseEvent* event) override;
+	virtual void mouseReleaseEvent(QMouseEvent* event) override;
+	virtual void tabletEvent(QTabletEvent* event) override;
+	virtual void paintEvent(QPaintEvent* event) override;
+	virtual void keyPressEvent(QKeyEvent* event) override;
 
 
 	void fitCurves();
@@ -76,15 +77,15 @@ private:
 	}
 	bool isInBorder(int border, const QPointF& point) const {
 		return (border < 2) ? xy(border, point) < m_borderLimits[border].pos
-							: xy(border, point) > m_borderLimits[border].pos;
+												: xy(border, point) > m_borderLimits[border].pos;
 	}
 	double pixelToUnit(int border, double pixel) const {
 		return (border < 2) ? pixel / wh(border)
-							: 1.0 - pixel / wh(border);
+												: 1.0 - pixel / wh(border);
 	}
 	double unitToPixel(int border, double unit) const {
 		return (border < 2) ? unit * wh(border)
-							: (1.0 - unit) * wh(border);
+												: (1.0 - unit) * wh(border);
 	}
 
 	bool m_curveMode;
